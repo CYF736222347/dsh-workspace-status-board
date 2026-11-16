@@ -1,0 +1,3 @@
+- insert:
+    - id: workspace-status-board
+      name: '@local/dsh-workspace-status-board'
