@@ -33,6 +33,7 @@ DSH 默认的侧边栏工作区列表按最近更新时间或手动顺序排列�
 - **拖拽排序**：工作区和任务都有拖拽手柄；只在**同一状态分组内**调整顺序，状态优先级不会被拖坏。手动位置优先于活动时间，头部提供「恢复自动排序」清除全部手动顺序。顺序保存在浏览器 localStorage。
 - **任务归档与恢复**：任务行悬停显示归档按钮。普通任务直接归档；仍有运行中工作时，Host 会拒绝静默归档，看板弹出「停止并归档」确认，确认后以 `stopActivity: true` 停止该会话的回合/子代理/后台工作并归档。已归档任务进入底部「已归档」区，可展开并恢复。
 - **工作区重命名**：悬停工作区标题出现铅笔按钮；点击后在工作区下方展开内联编辑框，`Enter` 保存、`Escape` 取消，空白名称禁用保存。通过 Host 的 `workspaces.rename` 写入，成功后列表实时更新，失败显示错误条。
+- **任务重命名**：任务行悬停出现铅笔按钮；点击后在该任务下方展开内联编辑框，`Enter` 保存、`Escape` 取消，空白标题禁用保存。通过 `sessions.using(..., reference.binding.session.rename(title))` 写入，成功后任务标题实时更新，失败显示错误条。
 - **折叠轨道**：侧边栏收起为 56px 轨道时，显示三色状态计数，点击任一图标展开侧边栏。
 - **新建与添加入口**：工作区标题悬停显示「＋」新建会话；顶部「＋」通过原生目录选择器注册新工作区。
 - **中英双语**：所有可见文案走 DSH locale 服务，内置 `zh` / `en`。
@@ -83,10 +84,11 @@ dsh plugin --profile <profile> add github:CYF736222347/dsh-workspace-status-boar
 2. 工作区标题点击展开/收起；任务行点击打开会话。
 3. 拖动工作区标题左侧或任务行左侧的手柄，在同一状态内调整顺序。
 4. 悬停工作区标题点击铅笔按钮，内联修改名称；`Enter` 保存、`Escape` 取消。
-5. 有手动顺序时，头部出现「恢复自动排序」，点击回到纯「状态 → 时间」排序。
-6. 任务行悬停显示归档按钮；运行中的任务会先出现停止并归档确认。
-7. 底部「已归档（N）」区可展开，逐条恢复。
-8. 工作区标题悬停「＋」新建会话；顶部「＋」添加工作区。
+5. 悬停任务行点击铅笔按钮，内联修改任务标题；`Enter` 保存、`Escape` 取消。
+6. 有手动顺序时，头部出现「恢复自动排序」，点击回到纯「状态 → 时间」排序。
+7. 任务行悬停显示归档按钮；运行中的任务会先出现停止并归档确认。
+8. 底部「已归档（N）」区可展开，逐条恢复。
+9. 工作区标题悬停「＋」新建会话；顶部「＋」添加工作区。
 
 ### 依赖与配置
 
@@ -97,11 +99,11 @@ dsh plugin --profile <profile> add github:CYF736222347/dsh-workspace-status-boar
   - `dsh.workspace-status-board.collapsed.v1`
   - `dsh.workspace-status-board.expanded-done.v1`
   - `dsh.workspace-status-board.order.v1`
-- **归档**：通过 Host 的 `workspaces.archiveSession` / `unarchiveSession`；**重命名**通过 `workspaces.rename`；拖拽顺序不会写回 Host 工作区注册顺序。
+- **归档**：通过 Host 的 `workspaces.archiveSession` / `unarchiveSession`；**工作区重命名**通过 `workspaces.rename`；**任务重命名**通过 `sessions.using(..., reference.binding.session.rename(title))`；拖拽顺序不会写回 Host 工作区注册顺序。
 
 ### 已知取舍
 
-看板覆盖原生浏览区，因此原生区域的消息内容全文搜索、置顶、归档筛选的三种模式、工作区删除菜单不在看板内；这些可通过禁用插件恢复。工作区重命名已提供，拖拽只在同一状态内生效，且顺序是浏览器本地的；触屏环境不保证 HTML5 拖拽可用。搜索期间「已归档」区暂时隐藏。
+看板覆盖原生浏览区，因此原生区域的消息内容全文搜索、置顶、归档筛选的三种模式、工作区删除菜单不在看板内；这些可通过禁用插件恢复。工作区与任务重命名均已提供，拖拽只在同一状态内生效，且顺序是浏览器本地的；触屏环境不保证 HTML5 拖拽可用。搜索期间「已归档」区暂时隐藏。
 
 ### 验证
 
@@ -129,6 +131,7 @@ MIT。见 [LICENSE](LICENSE)。
 - Drag reordering of workspaces and tasks **within the same status group**; manual positions beat recency, and a “reset to automatic order” action clears them. Order is browser-local.
 - Archive a task from its hover action. If work is still running, the host refuses a quiet archive and the board asks to stop and archive (`stopActivity: true`). Archived tasks move to a bottom “Archived” section with per-task restore.
 - Rename a workspace from its hover pencil: an inline editor opens under the row, `Enter` saves, `Escape` cancels, and blank names cannot be saved. Renames go through the host's `workspaces.rename`; the list updates live and failures show an error notice.
+- Rename a task from its hover pencil: the same inline editor appears under the task, with `Enter`/`Escape` and blank-title validation, using `sessions.using(..., reference.binding.session.rename(title))`; titles update live and failures show an error notice.
 - Rail mode shows three status counts and expands the sidebar on click.
 - Add-workspace and new-session shortcuts, bilingual zh/en copy, and no configuration.
 
