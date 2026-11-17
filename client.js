@@ -72,6 +72,12 @@ window.__ModuleLoader__.load({
       'archived.title': 'Archived ({n})',
       'archived.restore': 'Restore',
       'archived.restoreError': 'Could not restore: {message}',
+      'rename.action': 'Rename workspace',
+      'rename.title': 'Rename workspace',
+      'rename.placeholder': 'Workspace name',
+      'rename.save': 'Save',
+      'rename.cancel': 'Cancel',
+      'rename.error': 'Could not rename: {message}',
       expand: 'Expand {name}',
       collapse: 'Collapse {name}',
       ungrouped: 'Ungrouped',
@@ -132,6 +138,12 @@ window.__ModuleLoader__.load({
       'archived.title': '已归档（{n}）',
       'archived.restore': '恢复',
       'archived.restoreError': '恢复失败：{message}',
+      'rename.action': '重命名工作区',
+      'rename.title': '重命名工作区',
+      'rename.placeholder': '工作区名称',
+      'rename.save': '保存',
+      'rename.cancel': '取消',
+      'rename.error': '重命名失败：{message}',
       expand: '展开 {name}',
       collapse: '收起 {name}',
       ungrouped: '未归组',
@@ -165,7 +177,7 @@ window.__ModuleLoader__.load({
       '.wsb-add:disabled{opacity:.5;cursor:default}',
       '.wsb-reset{flex:none;width:22px;height:22px;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}',
       '.wsb-reset:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}',
-      '.wsb-add:focus-visible,.wsb-reset:focus-visible,.wsb-chip:focus-visible,.wsb-toggle:focus-visible,.wsb-new:focus-visible,.wsb-session-main:focus-visible,.wsb-session-archive:focus-visible,.wsb-rail-btn:focus-visible,.wsb-empty-action:focus-visible,.wsb-more:focus-visible,.wsb-search-clear:focus-visible,.wsb-confirm-primary:focus-visible,.wsb-confirm-secondary:focus-visible,.wsb-archived-head:focus-visible,.wsb-restore:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4c8df6);outline-offset:1px}',
+      '.wsb-add:focus-visible,.wsb-reset:focus-visible,.wsb-chip:focus-visible,.wsb-toggle:focus-visible,.wsb-new:focus-visible,.wsb-rename-action:focus-visible,.wsb-rename-save:focus-visible,.wsb-rename-cancel:focus-visible,.wsb-session-main:focus-visible,.wsb-session-archive:focus-visible,.wsb-rail-btn:focus-visible,.wsb-empty-action:focus-visible,.wsb-more:focus-visible,.wsb-search-clear:focus-visible,.wsb-confirm-primary:focus-visible,.wsb-confirm-secondary:focus-visible,.wsb-archived-head:focus-visible,.wsb-restore:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4c8df6);outline-offset:1px}',
       '.wsb-search{display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;border:1px solid transparent;border-radius:7px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary)}',
       '.wsb-search:focus-within{border-color:var(--dsw-alias-brand-primary,#4c8df6);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}',
       '.wsb-search-icon{flex:none;display:inline-flex;align-items:center;justify-content:center}',
@@ -202,6 +214,19 @@ window.__ModuleLoader__.load({
       '.wsb-group:hover .wsb-new,.wsb-new:focus-visible{opacity:1}',
       '.wsb-new:hover{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}',
       '@media (hover:none){.wsb-new{opacity:1}}',
+      '.wsb-rename-action{flex:none;width:22px;height:22px;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;opacity:0}',
+      '.wsb-group:hover .wsb-rename-action,.wsb-rename-action:focus-visible{opacity:1}',
+      '.wsb-rename-action:hover{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}',
+      '@media (hover:none){.wsb-rename-action{opacity:1}}',
+      '.wsb-rename{display:flex;align-items:center;gap:5px;padding:2px 6px 5px 24px}',
+      '.wsb-rename-input{flex:1;min-width:0;height:26px;padding:0 7px;border:1px solid var(--dsw-alias-border-l2);border-radius:6px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);font:inherit;font-size:12.5px;outline:none}',
+      '.wsb-rename-input:focus{border-color:var(--dsw-alias-brand-primary,#4c8df6)}',
+      '.wsb-rename-input::placeholder{color:var(--dsw-alias-label-secondary)}',
+      '.wsb-rename-save,.wsb-rename-cancel{flex:none;height:26px;padding:0 8px;border-radius:6px;font:inherit;font-size:11px;cursor:pointer}',
+      '.wsb-rename-save{border:none;background:var(--dsw-alias-brand-primary,#4c8df6);color:#fff}',
+      '.wsb-rename-save:disabled{opacity:.5;cursor:default}',
+      '.wsb-rename-cancel{border:1px solid var(--dsw-alias-border-l2);background:transparent;color:var(--dsw-alias-label-primary)}',
+      '.wsb-rename-cancel:hover{background:var(--dsw-alias-bg-layer-2)}',
       '@media (hover:none){.wsb-ws-grip{opacity:.65}}',
       '.wsb-sessions{display:flex;flex-direction:column;gap:1px;padding:0 2px 3px}',
       '.wsb-session{display:flex;align-items:center;width:100%;min-height:26px;border-radius:6px;background:transparent;color:inherit}',
@@ -827,6 +852,16 @@ window.__ModuleLoader__.load({
       )
     }
 
+    function PencilIcon({ size }) {
+      const dimension = size === undefined ? 13 : size
+      return h(
+        'svg',
+        { width: dimension, height: dimension, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': 'true', focusable: 'false', style: { display: 'block' } },
+        h('path', { d: 'M4 20h4L18.5 9.5a2.8 2.8 0 0 0-4-4L4 16v4Z' }),
+        h('path', { d: 'm13.5 6.5 4 4' }),
+      )
+    }
+
     // ---------------------------------------------------------------------
     // Presentation pieces
     // ---------------------------------------------------------------------
@@ -845,9 +880,12 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function WorkspaceEntry({ row, now, collapsed, queryActive, doneExpanded, workspaceDragging, workspaceDropHalf, workspaceCanDrop, onWorkspaceDragStart, onWorkspaceDragEnd, onWorkspaceHover, onWorkspaceDrop, onToggle, onToggleDone, onOpenSession, onNewSession, onReorderSessions, onArchive, archiveBusy, currentId, tr }) {
+    function WorkspaceEntry({ row, now, collapsed, queryActive, doneExpanded, workspaceDragging, workspaceDropHalf, workspaceCanDrop, onWorkspaceDragStart, onWorkspaceDragEnd, onWorkspaceHover, onWorkspaceDrop, onToggle, onToggleDone, onOpenSession, onNewSession, onReorderSessions, onArchive, archiveBusy, onRename, currentId, tr }) {
       const [sessionDrag, setSessionDrag] = React.useState(null)
       const [sessionDrop, setSessionDrop] = React.useState(null)
+      const [renaming, setRenaming] = React.useState(false)
+      const [renameDraft, setRenameDraft] = React.useState('')
+      const [renameBusy, setRenameBusy] = React.useState(false)
       const expanded = queryActive ? true : collapsed !== true
       const title = row.ungrouped ? tr('ungrouped') : row.title.length > 0 ? row.title : tr('untitled')
       const pillLabel = row.state === 'attention'
@@ -887,6 +925,36 @@ window.__ModuleLoader__.load({
         onReorderSessions(row.key, sessionDrag.state, sessionDrag.id, session.id, half)
         setSessionDrag(null)
         setSessionDrop(null)
+      }
+
+      const startRename = () => {
+        if (row.ungrouped || queryActive) return
+        setRenameDraft(row.title)
+        setRenaming(true)
+      }
+      const cancelRename = () => {
+        if (renameBusy) return
+        setRenaming(false)
+        setRenameDraft('')
+      }
+      const submitRename = async () => {
+        if (renameBusy) return
+        const next = renameDraft.trim()
+        if (next.length === 0 || next === row.title) {
+          setRenaming(false)
+          setRenameDraft('')
+          return
+        }
+        setRenameBusy(true)
+        try {
+          await onRename(row.workspaceId, next)
+          setRenaming(false)
+          setRenameDraft('')
+        } catch {
+          /* the parent renders the error notice and keeps the editor open */
+        } finally {
+          setRenameBusy(false)
+        }
       }
 
       const header = h(
@@ -940,6 +1008,22 @@ window.__ModuleLoader__.load({
           h('span', { className: 'wsb-visually-hidden' }, toggleLabel),
         ),
         h('span', { className: 'wsb-pill', 'data-state': row.state, title: pillFull }, h(StatusIcon, { state: row.state, size: 11 }), h('span', null, pillLabel)),
+        !row.ungrouped && !queryActive
+          ? h(
+            'button',
+            {
+              type: 'button',
+              className: 'wsb-rename-action',
+              title: tr('rename.action'),
+              'aria-label': tr('rename.action'),
+              onClick: (event) => {
+                event.stopPropagation()
+                startRename()
+              },
+            },
+            h(PencilIcon, { size: 13 }),
+          )
+          : null,
         row.ungrouped
           ? null
           : h(
@@ -999,6 +1083,52 @@ window.__ModuleLoader__.load({
         }
       }
 
+      const renameBar = renaming
+        ? h(
+          'div',
+          { className: 'wsb-rename', role: 'group', 'aria-label': tr('rename.title') },
+          h('input', {
+            className: 'wsb-rename-input',
+            type: 'text',
+            value: renameDraft,
+            autoFocus: true,
+            placeholder: tr('rename.placeholder'),
+            'aria-label': tr('rename.title'),
+            disabled: renameBusy,
+            onChange: (event) => setRenameDraft(event.target.value),
+            onKeyDown: (event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault()
+                cancelRename()
+              } else if (event.key === 'Enter') {
+                event.preventDefault()
+                submitRename()
+              }
+            },
+          }),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'wsb-rename-save',
+              disabled: renameBusy || renameDraft.trim().length === 0,
+              onClick: submitRename,
+            },
+            tr('rename.save'),
+          ),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'wsb-rename-cancel',
+              disabled: renameBusy,
+              onClick: cancelRename,
+            },
+            tr('rename.cancel'),
+          ),
+        )
+        : null
+
       return h(
         'section',
         {
@@ -1010,6 +1140,7 @@ window.__ModuleLoader__.load({
           'data-workspace-drop': workspaceDropHalf === null ? 'none' : workspaceDropHalf,
         },
         header,
+        renameBar,
         body,
       )
     }
@@ -1164,6 +1295,7 @@ window.__ModuleLoader__.load({
       const addWorkspace = typeof props.addWorkspace === 'function' ? props.addWorkspace : async () => null
       const archiveSession = typeof props.archiveSession === 'function' ? props.archiveSession : async () => {}
       const unarchiveSession = typeof props.unarchiveSession === 'function' ? props.unarchiveSession : async () => {}
+      const renameWorkspace = typeof props.renameWorkspace === 'function' ? props.renameWorkspace : async () => {}
 
       const useWorkspaces = props.useWorkspaces
       const useSessions = props.useSessions
@@ -1347,6 +1479,16 @@ window.__ModuleLoader__.load({
         }
       }
 
+      const handleRename = async (workspaceId, title) => {
+        setNotice(null)
+        try {
+          await renameWorkspace(workspaceId, title)
+        } catch (error) {
+          setNotice(tr('rename.error', { message: messageOf(error) }))
+          throw error
+        }
+      }
+
       const handleAdd = async () => {
         if (adding) return
         setAdding(true)
@@ -1439,6 +1581,7 @@ window.__ModuleLoader__.load({
               onNewSession: startSession,
               onReorderSessions: reorderSessions,
               onArchive: requestArchive,
+              onRename: handleRename,
               archiveBusy,
               currentId,
               tr,
@@ -1581,6 +1724,7 @@ window.__ModuleLoader__.load({
           startSession: (workspaceId) => ctx.uiWorkspace.startSession(workspaceId),
           archiveSession: (sessionId, options) => ctx.workspaces.archiveSession(sessionId, options),
           unarchiveSession: (sessionId) => ctx.workspaces.unarchiveSession(sessionId),
+          renameWorkspace: (workspaceId, title) => ctx.workspaces.rename(workspaceId, title),
           addWorkspace: async () => {
             const path = await ctx.uiWorkspace.pickDirectory()
             if (path === null || path === undefined || path === '') return null
