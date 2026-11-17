@@ -3,9 +3,9 @@
 > Status-first workspace board for the DSH sidebar. / 把 DSH 侧边栏工作区改成按状态优先排序的看板。
 
 <p align="center">
-  <img src="https://ghproxy.net/https://raw.githubusercontent.com/CYF736222347/dsh-workspace-status-board/main/assets/preview-board.png" alt="工作区状态看板示意图：需介入、执行中、已完成三种状态，搜索框、已完成收起、拖拽手柄、重命名与归档入口" width="360">
+  <img src="assets/preview-board.png" alt="工作区状态看板示意图：需介入、执行中、已完成三种状态，搜索框、已完成收起、拖拽手柄、重命名与归档入口" width="360">
 </p>
-<p align="center"><sub>示意图 · 示例数据（非真实会话截图） / Illustrative preview with sample data · <a href="assets/preview-board.png">源文件</a></sub></p>
+<p align="center"><sub>示意图 · 示例数据（非真实会话截图） / Illustrative preview with sample data</sub></p>
 
 [中文](#中文说明) · [English](#english-overview)
 
