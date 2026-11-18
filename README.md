@@ -35,7 +35,7 @@ DSH 默认的侧边栏工作区列表按最近更新时间或手动顺序排列�
 - **工作区重命名**：悬停工作区标题出现铅笔按钮；点击后在工作区下方展开内联编辑框，`Enter` 保存、`Escape` 取消，空白名称禁用保存。通过 Host 的 `workspaces.rename` 写入，成功后列表实时更新，失败显示错误条。
 - **任务重命名**：任务行悬停出现铅笔按钮；点击后在该任务下方展开内联编辑框，`Enter` 保存、`Escape` 取消，空白标题禁用保存。通过 `sessions.using(..., reference.binding.session.rename(title))` 写入，成功后任务标题实时更新，失败显示错误条。
 - **折叠轨道**：侧边栏收起为 56px 轨道时，显示三色状态计数，点击任一图标展开侧边栏。
-- **新建与添加入口**：工作区标题悬停显示「＋」新建会话；顶部「＋」通过原生目录选择器注册新工作区。
+- **新建与添加入口**：工作区标题悬停显示「＋」新建会话；顶部「＋」优先调用桌面原生目录选择器，当前环境没有原生能力时展开路径输入框，手动输入绝对目录路径。
 - **中英双语**：所有可见文案走 DSH locale 服务，内置 `zh` / `en`。
 
 ### 三种状态如何判定
@@ -88,7 +88,7 @@ dsh plugin --profile <profile> add github:CYF736222347/dsh-workspace-status-boar
 6. 有手动顺序时，头部出现「恢复自动排序」，点击回到纯「状态 → 时间」排序。
 7. 任务行悬停显示归档按钮；运行中的任务会先出现停止并归档确认。
 8. 底部「已归档（N）」区可展开，逐条恢复。
-9. 工作区标题悬停「＋」新建会话；顶部「＋」添加工作区。
+9. 工作区标题悬停「＋」新建会话；顶部「＋」添加工作区（原生选择器，或路径输入框）。
 
 ### 依赖与配置
 
@@ -133,7 +133,7 @@ MIT。见 [LICENSE](LICENSE)。
 - Rename a workspace from its hover pencil: an inline editor opens under the row, `Enter` saves, `Escape` cancels, and blank names cannot be saved. Renames go through the host's `workspaces.rename`; the list updates live and failures show an error notice.
 - Rename a task from its hover pencil: the same inline editor appears under the task, with `Enter`/`Escape` and blank-title validation, using `sessions.using(..., reference.binding.session.rename(title))`; titles update live and failures show an error notice.
 - Rail mode shows three status counts and expands the sidebar on click.
-- Add-workspace and new-session shortcuts, bilingual zh/en copy, and no configuration.
+- Add-workspace (native desktop picker, with a manual path fallback) and new-session shortcuts, bilingual zh/en copy, and no configuration.
 
 **Install.**
 
@@ -147,6 +147,6 @@ Refresh the page once after installation. The plugin shadows the shipped Workspa
 
 **Dependencies and configuration.** No npm runtime dependencies; React 18 is supplied by the host. Uses the `sidebar.workspaces` standard hooks and the `uiWorkspace` / `workspaces` client services. No required configuration; `dsh.bundle` and `dsh.client` are declared in `package.json`, and `cordis.patch.yml` inserts the `workspace-status-board` loader row. UI state (collapse, done expansion, manual order) is stored in browser localStorage.
 
-**Known trade-offs.** Full-text message search, pinning, three-way archive filters, and the workspace delete menu from the native browser are not included; workspace rename is provided; drag order is limited to one status group and is browser-local; touch drag is not guaranteed; archived entries are hidden while searching.
+**Known trade-offs.** Full-text message search, pinning, three-way archive filters, and the workspace delete menu from the native browser are not included; workspace rename is provided; drag order is limited to one status group and is browser-local; touch drag is not guaranteed; archived entries are hidden while searching. Add-workspace uses the desktop native chooser when available and a manual absolute-path field otherwise, not the in-app browse dialog.
 
 **License.** MIT.

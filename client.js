@@ -53,6 +53,11 @@ window.__ModuleLoader__.load({
       newSession: 'New session in {name}',
       addWorkspace: 'Add workspace',
       'addWorkspace.error': 'Could not add workspace: {message}',
+      'addWorkspace.pathTitle': 'Add workspace by path',
+      'addWorkspace.pathPlaceholder': 'Absolute directory path',
+      'addWorkspace.pathHint': 'The native folder picker is unavailable here. Enter an absolute directory path.',
+      'addWorkspace.add': 'Add',
+      'addWorkspace.cancel': 'Cancel',
       'search.label': 'Search workspaces and tasks',
       'search.placeholder': 'Search workspaces or tasks',
       'search.clear': 'Clear search',
@@ -123,6 +128,11 @@ window.__ModuleLoader__.load({
       newSession: '在 {name} 中新建会话',
       addWorkspace: '添加工作区',
       'addWorkspace.error': '无法添加工作区：{message}',
+      'addWorkspace.pathTitle': '按路径添加工作区',
+      'addWorkspace.pathPlaceholder': '绝对目录路径',
+      'addWorkspace.pathHint': '当前环境没有原生文件夹选择器，请直接输入绝对目录路径。',
+      'addWorkspace.add': '添加',
+      'addWorkspace.cancel': '取消',
       'search.label': '搜索工作区与任务',
       'search.placeholder': '搜索工作区或任务',
       'search.clear': '清除搜索',
@@ -236,6 +246,11 @@ window.__ModuleLoader__.load({
       '.wsb-rename-save:disabled{opacity:.5;cursor:default}',
       '.wsb-rename-cancel{border:1px solid var(--dsw-alias-border-l2);background:transparent;color:var(--dsw-alias-label-primary)}',
       '.wsb-rename-cancel:hover{background:var(--dsw-alias-bg-layer-2)}',
+      '.wsb-add-path{display:flex;flex-direction:column;gap:4px;margin:0 8px 6px;padding:6px 8px;border:1px solid var(--dsw-alias-border-l2);border-radius:7px;background:var(--dsw-alias-bg-layer-2)}',
+      '.wsb-add-path-row{display:flex;align-items:center;gap:5px}',
+      '.wsb-add-path-input{flex:1;min-width:0;height:26px;padding:0 7px;border:1px solid var(--dsw-alias-border-l2);border-radius:6px;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;outline:none}',
+      '.wsb-add-path-input:focus{border-color:var(--dsw-alias-brand-primary,#4c8df6)}',
+      '.wsb-add-path-hint{font-size:10px;line-height:1.4;color:var(--dsw-alias-label-secondary)}',
       '@media (hover:none){.wsb-ws-grip{opacity:.65}}',
       '.wsb-sessions{display:flex;flex-direction:column;gap:1px;padding:0 2px 3px}',
       '.wsb-session{display:flex;align-items:center;width:100%;min-height:26px;border-radius:6px;background:transparent;color:inherit}',
@@ -1409,6 +1424,7 @@ window.__ModuleLoader__.load({
       const openSession = typeof props.openSession === 'function' ? props.openSession : () => {}
       const startSession = typeof props.startSession === 'function' ? props.startSession : () => {}
       const addWorkspace = typeof props.addWorkspace === 'function' ? props.addWorkspace : async () => null
+      const pickDirectory = typeof props.pickDirectory === 'function' ? props.pickDirectory : async () => null
       const archiveSession = typeof props.archiveSession === 'function' ? props.archiveSession : async () => {}
       const unarchiveSession = typeof props.unarchiveSession === 'function' ? props.unarchiveSession : async () => {}
       const renameWorkspace = typeof props.renameWorkspace === 'function' ? props.renameWorkspace : async () => {}
@@ -1431,6 +1447,8 @@ window.__ModuleLoader__.load({
       const [query, setQuery] = React.useState('')
       const [adding, setAdding] = React.useState(false)
       const [addError, setAddError] = React.useState(null)
+      const [addPathOpen, setAddPathOpen] = React.useState(false)
+      const [addPathDraft, setAddPathDraft] = React.useState('')
       const [notice, setNotice] = React.useState(null)
       const [workspaceDrag, setWorkspaceDrag] = React.useState(null)
       const [workspaceDrop, setWorkspaceDrop] = React.useState(null)
@@ -1618,10 +1636,38 @@ window.__ModuleLoader__.load({
 
       const handleAdd = async () => {
         if (adding) return
+        setAddError(null)
+        setAdding(true)
+        try {
+          const path = await pickDirectory()
+          if (path === undefined) {
+            setAddPathOpen(true)
+            setAddPathDraft('')
+            return
+          }
+          if (typeof path !== 'string' || path.length === 0) return
+          await addWorkspace(path)
+        } catch (error) {
+          const message = error !== null && error !== undefined && typeof error.message === 'string' && error.message.length > 0
+            ? error.message
+            : String(error)
+          setAddError(tr('addWorkspace.error', { message }))
+          setAddPathOpen(true)
+        } finally {
+          setAdding(false)
+        }
+      }
+
+      const submitAddPath = async () => {
+        if (adding) return
+        const path = addPathDraft.trim()
+        if (path.length === 0) return
         setAdding(true)
         setAddError(null)
         try {
-          await addWorkspace()
+          await addWorkspace(path)
+          setAddPathOpen(false)
+          setAddPathDraft('')
         } catch (error) {
           const message = error !== null && error !== undefined && typeof error.message === 'string' && error.message.length > 0
             ? error.message
@@ -1630,6 +1676,13 @@ window.__ModuleLoader__.load({
         } finally {
           setAdding(false)
         }
+      }
+
+      const cancelAddPath = () => {
+        if (adding) return
+        setAddPathOpen(false)
+        setAddPathDraft('')
+        setAddError(null)
       }
 
       if (!wide) {
@@ -1807,6 +1860,57 @@ window.__ModuleLoader__.load({
             ),
             h('div', { className: 'wsb-summary' }, STATES.map((state) => h(CountChip, { key: state, state, count: visibleCounts[state], tr }))),
           ),
+          addPathOpen
+            ? h(
+              'div',
+              { className: 'wsb-add-path', role: 'group', 'aria-label': tr('addWorkspace.pathTitle') },
+              h(
+                'div',
+                { className: 'wsb-add-path-row' },
+                h('input', {
+                  className: 'wsb-add-path-input',
+                  type: 'text',
+                  value: addPathDraft,
+                  autoFocus: true,
+                  placeholder: tr('addWorkspace.pathPlaceholder'),
+                  'aria-label': tr('addWorkspace.pathTitle'),
+                  disabled: adding,
+                  spellCheck: false,
+                  onChange: (event) => setAddPathDraft(event.target.value),
+                  onKeyDown: (event) => {
+                    if (event.key === 'Escape') {
+                      event.preventDefault()
+                      cancelAddPath()
+                    } else if (event.key === 'Enter') {
+                      event.preventDefault()
+                      submitAddPath()
+                    }
+                  },
+                }),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'wsb-rename-save',
+                    disabled: adding || addPathDraft.trim().length === 0,
+                    onClick: submitAddPath,
+                  },
+                  tr('addWorkspace.add'),
+                ),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'wsb-rename-cancel',
+                    disabled: adding,
+                    onClick: cancelAddPath,
+                  },
+                  tr('addWorkspace.cancel'),
+                ),
+              ),
+              h('div', { className: 'wsb-add-path-hint' }, tr('addWorkspace.pathHint')),
+            )
+            : null,
           addError === null ? null : h('div', { className: 'wsb-error', role: 'alert' }, addError),
           notice === null ? null : h('div', { className: 'wsb-error', role: 'alert' }, notice),
           archiveConfirm === null
@@ -1861,11 +1965,24 @@ window.__ModuleLoader__.load({
               }
               return result.value
             }),
-          addWorkspace: async () => {
-            const path = await ctx.uiWorkspace.pickDirectory()
-            if (path === null || path === undefined || path === '') return null
+          addWorkspace: async (path) => {
+            if (typeof path !== 'string' || path === '') return null
             await ctx.workspaces.create({ path })
             return path
+          },
+          pickDirectory: async () => {
+            if (typeof window === 'undefined') return undefined
+            const desktop = window.__DSH_DIRECTORY_PICKER__
+            if (desktop !== undefined && desktop !== null && typeof desktop.pick === 'function') {
+              const result = await desktop.pick()
+              return typeof result === 'string' && result.length > 0 ? result : null
+            }
+            const legacy = window.__DSH_DESKTOP_PICK_DIRECTORY__
+            if (typeof legacy === 'function') {
+              const result = await legacy()
+              return typeof result === 'string' && result.length > 0 ? result : null
+            }
+            return undefined
           },
         }),
       }, StatusBoard))
