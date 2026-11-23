@@ -20,6 +20,12 @@ window.__ModuleLoader__.load({
     const h = React.createElement
 
     const NS = 'workspaceStatusBoard'
+    const PLUGIN_VERSION = '1.7.0'
+    const REPO_URL = 'https://github.com/CYF736222347/dsh-workspace-status-board'
+    const REMOTE_PACKAGE_URL = 'https://cdn.jsdelivr.net/gh/CYF736222347/dsh-workspace-status-board@main/package.json'
+    const REMOTE_PACKAGE_API = 'https://api.github.com/repos/CYF736222347/dsh-workspace-status-board/contents/package.json?ref=main'
+    const UPDATE_KEY = 'dsh.workspace-status-board.update.v1'
+    let updateCheckPromise = null
     const STATES = ['attention', 'running', 'done']
     const RANK = { attention: 0, running: 1, done: 2 }
     const COLLAPSE_KEY = 'dsh.workspace-status-board.collapsed.v1'
@@ -91,6 +97,14 @@ window.__ModuleLoader__.load({
       'renameTask.title': 'Rename task',
       'renameTask.placeholder': 'Task title',
       'renameTask.error': 'Could not rename task: {message}',
+      'update.title': 'Plugin update available',
+      'update.text': 'Current {current} → latest {latest}.',
+      'update.hint': 'Opens the Plugins page; if update is unavailable there, reinstall from the GitHub repository.',
+      'update.repo': 'Open GitHub repository',
+      'update.action': 'Update',
+      'update.skip': 'Skip this version',
+      'update.never': "Don't remind me again",
+      'update.close': 'Close',
       expand: 'Expand {name}',
       collapse: 'Collapse {name}',
       ungrouped: 'Ungrouped',
@@ -170,6 +184,14 @@ window.__ModuleLoader__.load({
       'renameTask.title': '重命名任务',
       'renameTask.placeholder': '任务标题',
       'renameTask.error': '任务重命名失败：{message}',
+      'update.title': '插件有可用更新',
+      'update.text': '当前 {current} → 最新 {latest}。',
+      'update.hint': '将打开插件管理页；如果那里没有更新操作，可从 GitHub 仓库重新安装。',
+      'update.repo': '打开 GitHub 仓库',
+      'update.action': '更新',
+      'update.skip': '跳过此版本',
+      'update.never': '不再提示更新',
+      'update.close': '关闭',
       expand: '展开 {name}',
       collapse: '收起 {name}',
       ungrouped: '未归组',
@@ -209,7 +231,7 @@ window.__ModuleLoader__.load({
       '.wsb-add{flex:none;width:22px;height:22px;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}',
       '.wsb-add:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}',
       '.wsb-add:disabled{opacity:.5;cursor:default}',
-      '.wsb-add:focus-visible,.wsb-autosort:focus-visible,.wsb-chip:focus-visible,.wsb-toggle:focus-visible,.wsb-new:focus-visible,.wsb-ws-archive:focus-visible,.wsb-rename-action:focus-visible,.wsb-rename-save:focus-visible,.wsb-rename-cancel:focus-visible,.wsb-session-main:focus-visible,.wsb-session-rename:focus-visible,.wsb-session-archive:focus-visible,.wsb-rail-btn:focus-visible,.wsb-empty-action:focus-visible,.wsb-more:focus-visible,.wsb-search-clear:focus-visible,.wsb-confirm-primary:focus-visible,.wsb-confirm-secondary:focus-visible,.wsb-archived-head:focus-visible,.wsb-restore:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4c8df6);outline-offset:1px}',
+      '.wsb-add:focus-visible,.wsb-autosort:focus-visible,.wsb-chip:focus-visible,.wsb-toggle:focus-visible,.wsb-new:focus-visible,.wsb-ws-archive:focus-visible,.wsb-rename-action:focus-visible,.wsb-rename-save:focus-visible,.wsb-rename-cancel:focus-visible,.wsb-session-main:focus-visible,.wsb-session-rename:focus-visible,.wsb-session-archive:focus-visible,.wsb-rail-btn:focus-visible,.wsb-empty-action:focus-visible,.wsb-more:focus-visible,.wsb-search-clear:focus-visible,.wsb-confirm-primary:focus-visible,.wsb-confirm-secondary:focus-visible,.wsb-archived-head:focus-visible,.wsb-restore:focus-visible,.wsb-update-close:focus-visible,.wsb-update-primary:focus-visible,.wsb-update-secondary:focus-visible,.wsb-update-tertiary:focus-visible,.wsb-update-link:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4c8df6);outline-offset:1px}',
       '.wsb-search{display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;border:1px solid transparent;border-radius:7px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary)}',
       '.wsb-search:focus-within{border-color:var(--dsw-alias-brand-primary,#4c8df6);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}',
       '.wsb-search-icon{flex:none;display:inline-flex;align-items:center;justify-content:center}',
@@ -324,6 +346,22 @@ window.__ModuleLoader__.load({
       '.wsb-restore{flex:none;padding:2px 7px;border:1px solid var(--dsw-alias-border-l2);border-radius:5px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:10.5px;cursor:pointer}',
       '.wsb-restore:hover{background:var(--dsw-alias-bg-layer-1)}',
       '.wsb-restore:disabled{opacity:.55;cursor:default}',
+      '.wsb-update-backdrop{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.55);pointer-events:auto}',
+      '.wsb-update-dialog{position:relative;width:min(440px,100%);max-height:calc(100vh - 48px);overflow:auto;padding:18px;border:1px solid var(--dsw-alias-border-l2);border-radius:14px;background:var(--dsw-alias-bg-overlay);color:var(--dsw-alias-label-primary);box-shadow:0 24px 70px rgba(0,0,0,.4);font-size:13px;line-height:1.5}',
+      '.wsb-update-close{position:absolute;top:10px;right:10px;width:24px;height:24px;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}',
+      '.wsb-update-close:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}',
+      '.wsb-update-title{margin:0 24px 8px 0;font-size:15px;font-weight:600}',
+      '.wsb-update-text{margin:0 0 6px;color:var(--dsw-alias-label-secondary)}',
+      '.wsb-update-hint{margin:0 0 8px;font-size:11px;line-height:1.5;color:var(--dsw-alias-label-secondary)}',
+      '.wsb-update-link{display:inline-block;margin-bottom:14px;font-size:11px;color:var(--dsw-alias-brand-primary,#4c8df6);text-decoration:none}',
+      '.wsb-update-link:hover{text-decoration:underline}',
+      '.wsb-update-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}',
+      '.wsb-update-primary,.wsb-update-secondary,.wsb-update-tertiary{padding:5px 11px;border-radius:7px;font:inherit;font-size:12px;cursor:pointer}',
+      '.wsb-update-primary{border:none;background:var(--dsw-alias-brand-primary,#4c8df6);color:#fff}',
+      '.wsb-update-secondary{border:1px solid var(--dsw-alias-border-l2);background:transparent;color:var(--dsw-alias-label-primary)}',
+      '.wsb-update-secondary:hover{background:var(--dsw-alias-bg-layer-2)}',
+      '.wsb-update-tertiary{border:none;background:transparent;color:var(--dsw-alias-label-secondary)}',
+      '.wsb-update-tertiary:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}',
       '.wsb-none{padding:2px 8px 6px 25px;font-size:10.5px;color:var(--dsw-alias-label-secondary)}',
       '.wsb-empty{display:flex;flex-direction:column;align-items:center;gap:4px;padding:26px 12px;text-align:center;color:var(--dsw-alias-label-secondary)}',
       '.wsb-empty-title{font-size:12.5px;font-weight:600;color:var(--dsw-alias-label-primary)}',
@@ -760,6 +798,91 @@ window.__ModuleLoader__.load({
 
     function writeAutoSort(value) {
       writeStoredMap(AUTO_SORT_KEY, value)
+    }
+
+    function readUpdatePrefs() {
+      const raw = readStoredMap(UPDATE_KEY)
+      return {
+        skippedVersion: typeof raw.skippedVersion === 'string' && raw.skippedVersion.length > 0 ? raw.skippedVersion : null,
+        never: raw.never === true,
+      }
+    }
+
+    function writeUpdatePrefs(value) {
+      writeStoredMap(UPDATE_KEY, value)
+    }
+
+    function versionParts(value) {
+      return String(value).split('-')[0].split('.').map((part) => {
+        const parsed = Number.parseInt(part, 10)
+        return Number.isFinite(parsed) ? parsed : 0
+      })
+    }
+
+    function isNewerVersion(remote, local) {
+      const left = versionParts(remote)
+      const right = versionParts(local)
+      const length = Math.max(left.length, right.length)
+      for (let index = 0; index < length; index++) {
+        const a = left[index] === undefined ? 0 : left[index]
+        const b = right[index] === undefined ? 0 : right[index]
+        if (a !== b) return a > b
+      }
+      return false
+    }
+
+    async function fetchRemoteVersion() {
+      const apiController = new AbortController()
+      const apiTimer = setTimeout(() => apiController.abort(), 4000)
+      try {
+        const response = await fetch(REMOTE_PACKAGE_API, {
+          signal: apiController.signal,
+          cache: 'no-store',
+          headers: { Accept: 'application/vnd.github.raw' },
+        })
+        if (response.ok) {
+          const text = await response.text()
+          try {
+            const data = JSON.parse(text)
+            if (typeof data.version === 'string') return data.version
+            if (typeof data.content === 'string' && typeof atob === 'function') {
+              const decoded = atob(data.content.replace(/\s/g, ''))
+              const packageJson = JSON.parse(decoded)
+              if (typeof packageJson.version === 'string') return packageJson.version
+            }
+          } catch {
+            /* try the CDN mirror */
+          }
+        }
+      } catch {
+        /* try the CDN mirror */
+      } finally {
+        clearTimeout(apiTimer)
+      }
+
+      const cdnController = new AbortController()
+      const cdnTimer = setTimeout(() => cdnController.abort(), 8000)
+      try {
+        const fallback = await fetch(REMOTE_PACKAGE_URL + '?t=' + Date.now(), {
+          signal: cdnController.signal,
+          cache: 'no-store',
+          headers: { Accept: 'application/json' },
+        })
+        if (fallback.ok) {
+          const data = await fallback.json()
+          if (typeof data.version === 'string') return data.version
+        }
+      } catch {
+        /* stay silent; the next startup retries */
+      } finally {
+        clearTimeout(cdnTimer)
+      }
+      return null
+    }
+
+    function checkForUpdateOnce() {
+      if (updateCheckPromise === null) updateCheckPromise = fetchRemoteVersion().catch(() => null)
+      return updateCheckPromise
     }
 
     function reorderIds(ids, sourceId, targetId, half) {
@@ -1461,6 +1584,116 @@ window.__ModuleLoader__.load({
       )
     }
 
+    function UpdateDialog({ notice, tr, onUpdate, onSkip, onNever, onClose }) {
+      return h(
+        'div',
+        {
+          className: 'wsb-update-backdrop',
+          onMouseDown: (event) => {
+            if (event.target === event.currentTarget) onClose()
+          },
+        },
+        h(
+          'section',
+          {
+            className: 'wsb-update-dialog',
+            role: 'dialog',
+            'aria-modal': 'true',
+            'aria-labelledby': 'wsb-update-title',
+          },
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'wsb-update-close',
+              title: tr('update.close'),
+              'aria-label': tr('update.close'),
+              onClick: onClose,
+            },
+            h(CloseIcon, { size: 12 }),
+          ),
+          h('h2', { className: 'wsb-update-title', id: 'wsb-update-title' }, tr('update.title')),
+          h('p', { className: 'wsb-update-text' }, tr('update.text', { current: notice.current, latest: notice.latest })),
+          h('p', { className: 'wsb-update-hint' }, tr('update.hint')),
+          h('a', { className: 'wsb-update-link', href: REPO_URL, target: '_blank', rel: 'noopener noreferrer' }, tr('update.repo')),
+          h(
+            'div',
+            { className: 'wsb-update-actions' },
+            h(
+              'button',
+              { type: 'button', className: 'wsb-update-primary', autoFocus: true, onClick: onUpdate },
+              tr('update.action'),
+            ),
+            h(
+              'button',
+              { type: 'button', className: 'wsb-update-secondary', onClick: onSkip },
+              tr('update.skip'),
+            ),
+            h(
+              'button',
+              { type: 'button', className: 'wsb-update-tertiary', onClick: onNever },
+              tr('update.never'),
+            ),
+          ),
+        ),
+      )
+    }
+
+    function UpdateNotice(props) {
+      const tr = typeof props.t === 'function' ? props.t : (key) => key
+      const openPlugins = typeof props.openPlugins === 'function' ? props.openPlugins : () => {}
+      const [notice, setNotice] = React.useState(null)
+
+      React.useEffect(() => {
+        const prefs = readUpdatePrefs()
+        if (prefs.never) return undefined
+        let cancelled = false
+        checkForUpdateOnce().then((latest) => {
+          if (cancelled || typeof latest !== 'string') return
+          const currentPrefs = readUpdatePrefs()
+          if (currentPrefs.never || currentPrefs.skippedVersion === latest) return
+          if (!isNewerVersion(latest, PLUGIN_VERSION)) return
+          setNotice({ current: PLUGIN_VERSION, latest })
+        })
+        return () => {
+          cancelled = true
+        }
+      }, [])
+
+      React.useEffect(() => {
+        if (notice === null) return undefined
+        const onKeyDown = (event) => {
+          if (event.key === 'Escape') setNotice(null)
+        }
+        document.addEventListener('keydown', onKeyDown)
+        return () => document.removeEventListener('keydown', onKeyDown)
+      }, [notice])
+
+      if (notice === null) return null
+
+      const close = () => setNotice(null)
+      const skip = () => {
+        const prefs = readUpdatePrefs()
+        writeUpdatePrefs(Object.assign({}, prefs, { skippedVersion: notice.latest }))
+        setNotice(null)
+      }
+      const never = () => {
+        const prefs = readUpdatePrefs()
+        writeUpdatePrefs(Object.assign({}, prefs, { never: true, skippedVersion: notice.latest }))
+        setNotice(null)
+      }
+      const update = () => {
+        setNotice(null)
+        try {
+          openPlugins()
+        } catch {
+          if (typeof window !== 'undefined') window.open(REPO_URL, '_blank', 'noopener,noreferrer')
+        }
+      }
+
+      return h(UpdateDialog, { notice, tr, onUpdate: update, onSkip: skip, onNever: never, onClose: close })
+    }
+
     // ---------------------------------------------------------------------
     // Component
     // ---------------------------------------------------------------------
@@ -2099,6 +2332,30 @@ window.__ModuleLoader__.load({
           },
         }),
       }, StatusBoard))
+
+      ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+        name: 'shell.overlay',
+        id: 'workspace-status-board-update',
+        order: 1000,
+        locale: NS,
+        inject: () => ({
+          openPlugins: () => {
+            const layout = ctx.get('layout')
+            if (layout !== undefined && layout !== null && typeof layout.selectPanel === 'function') {
+              try {
+                layout.selectPanel('plugins')
+                return true
+              } catch {
+                /* fall through to the repository */
+              }
+            }
+            if (typeof window !== 'undefined') {
+              window.open(REPO_URL, '_blank', 'noopener,noreferrer')
+            }
+            return false
+          },
+        }),
+      }, UpdateNotice))
     }
 
     return {
