@@ -843,11 +843,11 @@ window.__ModuleLoader__.load({
         if (response.ok) {
           const text = await response.text()
           try {
-            const data = JSON.parse(text)
+            const data = JSON.parse(text.replace(/^\uFEFF/, ''))
             if (typeof data.version === 'string') return data.version
             if (typeof data.content === 'string' && typeof atob === 'function') {
               const decoded = atob(data.content.replace(/\s/g, ''))
-              const packageJson = JSON.parse(decoded)
+              const packageJson = JSON.parse(decoded.replace(/^\uFEFF/, ''))
               if (typeof packageJson.version === 'string') return packageJson.version
             }
           } catch {
@@ -869,7 +869,8 @@ window.__ModuleLoader__.load({
           headers: { Accept: 'application/json' },
         })
         if (fallback.ok) {
-          const data = await fallback.json()
+          const text = await fallback.text()
+          const data = JSON.parse(text.replace(/^\uFEFF/, ''))
           if (typeof data.version === 'string') return data.version
         }
       } catch {
