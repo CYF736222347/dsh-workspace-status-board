@@ -23,7 +23,7 @@ window.__ModuleLoader__.load({
     const STATES = ['attention', 'running', 'done']
     const RANK = { attention: 0, running: 1, done: 2 }
     const COLLAPSE_KEY = 'dsh.workspace-status-board.collapsed.v1'
-    const DONE_EXPANDED_KEY = 'dsh.workspace-status-board.expanded-done.v1'
+    const ARCHIVED_WORKSPACES_KEY = 'dsh.workspace-status-board.archived-workspaces.v1'
     const ORDER_KEY = 'dsh.workspace-status-board.order.v1'
     const DONE_PREVIEW_LIMIT = 3
     const EMPTY_MAP = new Map()
@@ -75,6 +75,8 @@ window.__ModuleLoader__.load({
       'archive.cancel': 'Cancel',
       'archive.error': 'Could not archive: {message}',
       'archived.title': 'Archived ({n})',
+      'archiveWorkspace.action': 'Archive workspace',
+      'archivedWorkspaces.title': 'Archived workspaces ({n})',
       'archived.restore': 'Restore',
       'archived.restoreError': 'Could not restore: {message}',
       'rename.action': 'Rename workspace',
@@ -150,6 +152,8 @@ window.__ModuleLoader__.load({
       'archive.cancel': '取消',
       'archive.error': '归档失败：{message}',
       'archived.title': '已归档（{n}）',
+      'archiveWorkspace.action': '归档工作区',
+      'archivedWorkspaces.title': '已归档工作区（{n}）',
       'archived.restore': '恢复',
       'archived.restoreError': '恢复失败：{message}',
       'rename.action': '重命名工作区',
@@ -195,7 +199,7 @@ window.__ModuleLoader__.load({
       '.wsb-add:disabled{opacity:.5;cursor:default}',
       '.wsb-reset{flex:none;width:22px;height:22px;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}',
       '.wsb-reset:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}',
-      '.wsb-add:focus-visible,.wsb-reset:focus-visible,.wsb-chip:focus-visible,.wsb-toggle:focus-visible,.wsb-new:focus-visible,.wsb-rename-action:focus-visible,.wsb-rename-save:focus-visible,.wsb-rename-cancel:focus-visible,.wsb-session-main:focus-visible,.wsb-session-rename:focus-visible,.wsb-session-archive:focus-visible,.wsb-rail-btn:focus-visible,.wsb-empty-action:focus-visible,.wsb-more:focus-visible,.wsb-search-clear:focus-visible,.wsb-confirm-primary:focus-visible,.wsb-confirm-secondary:focus-visible,.wsb-archived-head:focus-visible,.wsb-restore:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4c8df6);outline-offset:1px}',
+      '.wsb-add:focus-visible,.wsb-reset:focus-visible,.wsb-chip:focus-visible,.wsb-toggle:focus-visible,.wsb-new:focus-visible,.wsb-ws-archive:focus-visible,.wsb-rename-action:focus-visible,.wsb-rename-save:focus-visible,.wsb-rename-cancel:focus-visible,.wsb-session-main:focus-visible,.wsb-session-rename:focus-visible,.wsb-session-archive:focus-visible,.wsb-rail-btn:focus-visible,.wsb-empty-action:focus-visible,.wsb-more:focus-visible,.wsb-search-clear:focus-visible,.wsb-confirm-primary:focus-visible,.wsb-confirm-secondary:focus-visible,.wsb-archived-head:focus-visible,.wsb-restore:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4c8df6);outline-offset:1px}',
       '.wsb-search{display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;border:1px solid transparent;border-radius:7px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary)}',
       '.wsb-search:focus-within{border-color:var(--dsw-alias-brand-primary,#4c8df6);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}',
       '.wsb-search-icon{flex:none;display:inline-flex;align-items:center;justify-content:center}',
@@ -232,6 +236,10 @@ window.__ModuleLoader__.load({
       '.wsb-group:hover .wsb-new,.wsb-new:focus-visible{opacity:1}',
       '.wsb-new:hover{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}',
       '@media (hover:none){.wsb-new{opacity:1}}',
+      '.wsb-ws-archive{flex:none;width:22px;height:22px;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;opacity:0}',
+      '.wsb-group:hover .wsb-ws-archive,.wsb-ws-archive:focus-visible{opacity:1}',
+      '.wsb-ws-archive:hover{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}',
+      '@media (hover:none){.wsb-ws-archive{opacity:1}}',
       '.wsb-rename-action{flex:none;width:22px;height:22px;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;opacity:0}',
       '.wsb-group:hover .wsb-rename-action,.wsb-rename-action:focus-visible{opacity:1}',
       '.wsb-rename-action:hover{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}',
@@ -492,12 +500,13 @@ window.__ModuleLoader__.load({
       }
     }
 
-    function buildModel(workspacesState, sessionsState, statuses) {
+    function buildModel(workspacesState, sessionsState, statuses, archivedWorkspaceIds) {
       const items = workspacesState !== undefined && workspacesState !== null && Array.isArray(workspacesState.items) ? workspacesState.items : []
       const archivedIds = workspacesState !== undefined && workspacesState !== null && Array.isArray(workspacesState.archivedSessionIds)
         ? workspacesState.archivedSessionIds
         : []
       const archived = new Set(archivedIds)
+      const archivedGroups = archivedWorkspaceIds instanceof Set ? archivedWorkspaceIds : null
       const list = sessionsState !== undefined && sessionsState !== null && sessionsState.byId !== undefined ? sessionsState : EMPTY_SESSIONS
       const byId = list.byId !== undefined && list.byId !== null ? list.byId : {}
       const ids = Array.isArray(list.ids) ? list.ids : []
@@ -507,6 +516,7 @@ window.__ModuleLoader__.load({
       for (const workspace of items) {
         const memberIds = Array.isArray(workspace.sessionIds) ? workspace.sessionIds : []
         for (const id of memberIds) accounted.add(id)
+        if (archivedGroups !== null && archivedGroups.has(workspace.workspaceId)) continue
         rows.push(workspaceRowOf(workspace, memberIds, byId, map, list, archived))
       }
       const strayIds = ids.filter((id) => !accounted.has(id))
@@ -732,8 +742,8 @@ window.__ModuleLoader__.load({
       return readStoredMap(COLLAPSE_KEY)
     }
 
-    function readDoneExpanded() {
-      return readStoredMap(DONE_EXPANDED_KEY)
+    function readArchivedWorkspaces() {
+      return readStoredMap(ARCHIVED_WORKSPACES_KEY)
     }
 
     function readManualOrder() {
@@ -909,7 +919,7 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function WorkspaceEntry({ row, now, collapsed, queryActive, doneExpanded, workspaceDragging, workspaceDropHalf, workspaceCanDrop, onWorkspaceDragStart, onWorkspaceDragEnd, onWorkspaceHover, onWorkspaceDrop, onToggle, onToggleDone, onOpenSession, onNewSession, onReorderSessions, onArchive, archiveBusy, onRename, onRenameSession, currentId, tr }) {
+    function WorkspaceEntry({ row, now, collapsed, queryActive, doneExpanded, workspaceDragging, workspaceDropHalf, workspaceCanDrop, onWorkspaceDragStart, onWorkspaceDragEnd, onWorkspaceHover, onWorkspaceDrop, onToggle, onToggleDone, onOpenSession, onNewSession, onReorderSessions, onArchive, archiveBusy, onArchiveWorkspace, onRename, onRenameSession, currentId, tr }) {
       const [sessionDrag, setSessionDrag] = React.useState(null)
       const [sessionDrop, setSessionDrop] = React.useState(null)
       const [renaming, setRenaming] = React.useState(false)
@@ -1042,6 +1052,22 @@ window.__ModuleLoader__.load({
             'button',
             {
               type: 'button',
+              className: 'wsb-ws-archive',
+              title: tr('archiveWorkspace.action'),
+              'aria-label': tr('archiveWorkspace.action'),
+              onClick: (event) => {
+                event.stopPropagation()
+                onArchiveWorkspace(row)
+              },
+            },
+            h(ArchiveIcon, { size: 13 }),
+          )
+          : null,
+        !row.ungrouped && !queryActive
+          ? h(
+            'button',
+            {
+              type: 'button',
               className: 'wsb-rename-action',
               title: tr('rename.action'),
               'aria-label': tr('rename.action'),
@@ -1075,7 +1101,7 @@ window.__ModuleLoader__.load({
         } else {
           const activeSessions = row.sessions.filter((session) => session.state !== 'done')
           const doneSessions = row.sessions.filter((session) => session.state === 'done')
-          const visibleDone = queryActive || doneExpanded ? doneSessions : doneSessions.slice(0, DONE_PREVIEW_LIMIT)
+          const visibleDone = doneExpanded ? doneSessions : doneSessions.slice(0, DONE_PREVIEW_LIMIT)
           const hiddenDone = doneSessions.length - visibleDone.length
           const children = activeSessions.concat(visibleDone).map((session) => h(SessionEntry, {
             key: session.id,
@@ -1095,7 +1121,7 @@ window.__ModuleLoader__.load({
             onDrop: dropSession(session),
             tr,
           }))
-          if (!queryActive && doneSessions.length > DONE_PREVIEW_LIMIT) {
+          if (doneSessions.length > DONE_PREVIEW_LIMIT) {
             children.push(h(
               'button',
               {
@@ -1413,6 +1439,46 @@ window.__ModuleLoader__.load({
       )
     }
 
+    function ArchivedWorkspacesSection({ items, expanded, onToggle, onRestore, tr }) {
+      if (items.length === 0) return null
+      return h(
+        'section',
+        { className: 'wsb-archived' },
+        h(
+          'button',
+          {
+            type: 'button',
+            className: 'wsb-archived-head',
+            'aria-expanded': expanded,
+            onClick: onToggle,
+          },
+          h('span', { className: 'wsb-chevron', 'aria-hidden': 'true' }, h(ChevronIcon, { open: expanded })),
+          h('span', null, tr('archivedWorkspaces.title', { n: items.length })),
+        ),
+        expanded
+          ? h(
+            'div',
+            { className: 'wsb-archived-list' },
+            items.map((item) => h(
+              'div',
+              { className: 'wsb-archived-row', key: item.id, title: item.title },
+              h('span', { className: 'wsb-archived-icon' }, h(ArchiveIcon, { size: 13 })),
+              h('span', { className: 'wsb-archived-text' }, h('span', { className: 'wsb-archived-title' }, item.title)),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'wsb-restore',
+                  onClick: () => onRestore(item.id),
+                },
+                tr('archived.restore'),
+              ),
+            )),
+          )
+          : null,
+      )
+    }
+
     // ---------------------------------------------------------------------
     // Component
     // ---------------------------------------------------------------------
@@ -1442,8 +1508,9 @@ window.__ModuleLoader__.load({
 
       const now = useNow(30000)
       const [collapsed, setCollapsed] = React.useState(readCollapsed)
-      const [doneExpanded, setDoneExpanded] = React.useState(readDoneExpanded)
+      const [doneExpanded, setDoneExpanded] = React.useState({})
       const [manualOrder, setManualOrder] = React.useState(readManualOrder)
+      const [archivedWorkspaces, setArchivedWorkspaces] = React.useState(readArchivedWorkspaces)
       const [query, setQuery] = React.useState('')
       const [adding, setAdding] = React.useState(false)
       const [addError, setAddError] = React.useState(null)
@@ -1455,6 +1522,7 @@ window.__ModuleLoader__.load({
       const [archiveConfirm, setArchiveConfirm] = React.useState(null)
       const [archiveBusy, setArchiveBusy] = React.useState(false)
       const [archivedOpen, setArchivedOpen] = React.useState(false)
+      const [archivedWorkspacesOpen, setArchivedWorkspacesOpen] = React.useState(false)
       const [restoringId, setRestoringId] = React.useState(null)
 
       React.useEffect(() => {
@@ -1469,7 +1537,15 @@ window.__ModuleLoader__.load({
         return () => clearTimeout(handle)
       }, [notice])
 
-      const automaticRows = React.useMemo(() => buildModel(workspacesState, sessionsState, statuses), [workspacesState, sessionsState, statuses])
+      const archivedWorkspaceSet = React.useMemo(() => {
+        const set = new Set()
+        for (const [id, flag] of Object.entries(archivedWorkspaces)) if (flag === true) set.add(id)
+        return set
+      }, [archivedWorkspaces])
+      const automaticRows = React.useMemo(
+        () => buildModel(workspacesState, sessionsState, statuses, archivedWorkspaceSet),
+        [workspacesState, sessionsState, statuses, archivedWorkspaceSet],
+      )
       const rows = React.useMemo(() => applyManualOrder(automaticRows, manualOrder), [automaticRows, manualOrder])
       const queryActive = query.trim().length > 0
       const visibleRows = React.useMemo(() => filterRows(rows, query, tr), [rows, query, tr])
@@ -1484,6 +1560,16 @@ window.__ModuleLoader__.load({
         return next
       }, [visibleRows])
       const archivedItems = React.useMemo(() => buildArchivedItems(workspacesState, sessionsState), [workspacesState, sessionsState])
+      const archivedWorkspaceItems = React.useMemo(() => {
+        const items = workspacesState !== undefined && workspacesState !== null && Array.isArray(workspacesState.items) ? workspacesState.items : []
+        return items
+          .filter((workspace) => archivedWorkspaceSet.has(workspace.workspaceId))
+          .map((workspace) => ({
+            id: workspace.workspaceId,
+            title: (typeof workspace.title === 'string' ? workspace.title.trim() : '') || basenameOf(workspace.path) || tr('untitled'),
+          }))
+          .sort((left, right) => left.title.localeCompare(right.title))
+      }, [workspacesState, archivedWorkspaceSet, tr])
       const currentId = panelActive ? null : currentSessionId(sessionsState)
       const manualActive = hasManualOrder(manualOrder)
 
@@ -1502,7 +1588,24 @@ window.__ModuleLoader__.load({
           const next = Object.assign({}, previous)
           if (next[key] === true) delete next[key]
           else next[key] = true
-          writeStoredMap(DONE_EXPANDED_KEY, next)
+          return next
+        })
+      }
+
+      const archiveWorkspace = (row) => {
+        if (row.ungrouped || row.workspaceId === undefined || row.workspaceId === null) return
+        setArchivedWorkspaces((previous) => {
+          const next = Object.assign({}, previous, { [row.workspaceId]: true })
+          writeStoredMap(ARCHIVED_WORKSPACES_KEY, next)
+          return next
+        })
+      }
+
+      const restoreWorkspace = (workspaceId) => {
+        setArchivedWorkspaces((previous) => {
+          const next = Object.assign({}, previous)
+          delete next[workspaceId]
+          writeStoredMap(ARCHIVED_WORKSPACES_KEY, next)
           return next
         })
       }
@@ -1726,7 +1829,7 @@ window.__ModuleLoader__.load({
           h('div', { className: 'wsb-empty-hint' }, tr('search.hint')),
           h('button', { type: 'button', className: 'wsb-empty-action', onClick: () => setQuery('') }, tr('search.clear')),
         )
-      } else if (visibleRows.length === 0 && (queryActive || archivedItems.length === 0)) {
+      } else if (visibleRows.length === 0 && (queryActive || (archivedItems.length === 0 && archivedWorkspaceItems.length === 0))) {
         content = h(
           'div',
           { className: 'wsb-empty' },
@@ -1761,6 +1864,7 @@ window.__ModuleLoader__.load({
               onNewSession: startSession,
               onReorderSessions: reorderSessions,
               onArchive: requestArchive,
+              onArchiveWorkspace: archiveWorkspace,
               onRename: handleRename,
               onRenameSession: handleSessionRename,
               archiveBusy,
@@ -1768,6 +1872,16 @@ window.__ModuleLoader__.load({
               tr,
             })),
           ),
+          !queryActive && archivedWorkspaceItems.length > 0
+            ? h(ArchivedWorkspacesSection, {
+              key: 'archived-workspaces',
+              items: archivedWorkspaceItems,
+              expanded: archivedWorkspacesOpen,
+              onToggle: () => setArchivedWorkspacesOpen((value) => !value),
+              onRestore: restoreWorkspace,
+              tr,
+            })
+            : null,
           !queryActive && archivedItems.length > 0
             ? h(ArchivedSection, {
               key: 'archived',

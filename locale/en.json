@@ -48,6 +48,8 @@
   "archive.cancel": "Cancel",
   "archive.error": "Could not archive: {message}",
   "archived.title": "Archived ({n})",
+  "archiveWorkspace.action": "Archive workspace",
+  "archivedWorkspaces.title": "Archived workspaces ({n})",
   "archived.restore": "Restore",
   "archived.restoreError": "Could not restore: {message}",
   "rename.action": "Rename workspace",

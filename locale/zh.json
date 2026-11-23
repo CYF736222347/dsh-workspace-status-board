@@ -48,6 +48,8 @@
   "archive.cancel": "取消",
   "archive.error": "归档失败：{message}",
   "archived.title": "已归档（{n}）",
+  "archiveWorkspace.action": "归档工作区",
+  "archivedWorkspaces.title": "已归档工作区（{n}）",
   "archived.restore": "恢复",
   "archived.restoreError": "恢复失败：{message}",
   "rename.action": "重命名工作区",
