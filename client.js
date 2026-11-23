@@ -25,6 +25,7 @@ window.__ModuleLoader__.load({
     const COLLAPSE_KEY = 'dsh.workspace-status-board.collapsed.v1'
     const ARCHIVED_WORKSPACES_KEY = 'dsh.workspace-status-board.archived-workspaces.v1'
     const ORDER_KEY = 'dsh.workspace-status-board.order.v1'
+    const AUTO_SORT_KEY = 'dsh.workspace-status-board.auto-sort.v1'
     const DONE_PREVIEW_LIMIT = 3
     const EMPTY_MAP = new Map()
     const EMPTY_SESSIONS = { phase: 'ready', ids: [], byId: {}, projectionsBySession: {} }
@@ -69,6 +70,9 @@ window.__ModuleLoader__.load({
       dragWorkspace: 'Drag to reorder workspace',
       dragTask: 'Drag to reorder task',
       'order.reset': 'Reset to automatic order',
+      'autoSort.short': 'Auto',
+      'autoSort.on': 'Auto sort on',
+      'autoSort.off': 'Auto sort off; order is frozen',
       'archive.action': 'Archive task',
       'archive.confirm': '"{name}" still has running work. Stop it and archive?',
       'archive.stop': 'Stop and archive',
@@ -146,6 +150,9 @@ window.__ModuleLoader__.load({
       dragWorkspace: '拖动调整工作区顺序',
       dragTask: '拖动调整任务顺序',
       'order.reset': '恢复自动排序',
+      'autoSort.short': '自动',
+      'autoSort.on': '自动排序：开',
+      'autoSort.off': '自动排序：关，顺序已冻结',
       'archive.action': '归档任务',
       'archive.confirm': '“{name}”仍有正在执行的工作。停止并归档？',
       'archive.stop': '停止并归档',
@@ -194,12 +201,20 @@ window.__ModuleLoader__.load({
       '.wsb-head-row{display:flex;align-items:center;gap:6px;min-height:22px}',
       '.wsb-title{flex:1;min-width:0;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--dsw-alias-label-secondary)}',
       '.wsb-total{flex:none;font-size:10.5px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}',
+      '.wsb-autosort{flex:none;display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 4px;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:10.5px;white-space:nowrap;cursor:pointer}',
+      '.wsb-autosort:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}',
+      '.wsb-autosort-label{line-height:1}',
+      '.wsb-autosort-track{position:relative;width:24px;height:14px;border-radius:7px;background:var(--dsw-alias-border-l2);transition:background .15s ease}',
+      '.wsb-autosort-track[data-on="true"]{background:var(--dsw-alias-brand-primary,#4c8df6)}',
+      '.wsb-autosort-thumb{position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:#fff;transition:transform .15s ease}',
+      '.wsb-autosort-track[data-on="true"] .wsb-autosort-thumb{transform:translateX(10px)}',
+      '@media (prefers-reduced-motion:reduce){.wsb-autosort-track,.wsb-autosort-thumb{transition:none}}',
       '.wsb-add{flex:none;width:22px;height:22px;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}',
       '.wsb-add:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}',
       '.wsb-add:disabled{opacity:.5;cursor:default}',
       '.wsb-reset{flex:none;width:22px;height:22px;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}',
       '.wsb-reset:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}',
-      '.wsb-add:focus-visible,.wsb-reset:focus-visible,.wsb-chip:focus-visible,.wsb-toggle:focus-visible,.wsb-new:focus-visible,.wsb-ws-archive:focus-visible,.wsb-rename-action:focus-visible,.wsb-rename-save:focus-visible,.wsb-rename-cancel:focus-visible,.wsb-session-main:focus-visible,.wsb-session-rename:focus-visible,.wsb-session-archive:focus-visible,.wsb-rail-btn:focus-visible,.wsb-empty-action:focus-visible,.wsb-more:focus-visible,.wsb-search-clear:focus-visible,.wsb-confirm-primary:focus-visible,.wsb-confirm-secondary:focus-visible,.wsb-archived-head:focus-visible,.wsb-restore:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4c8df6);outline-offset:1px}',
+      '.wsb-add:focus-visible,.wsb-reset:focus-visible,.wsb-autosort:focus-visible,.wsb-chip:focus-visible,.wsb-toggle:focus-visible,.wsb-new:focus-visible,.wsb-ws-archive:focus-visible,.wsb-rename-action:focus-visible,.wsb-rename-save:focus-visible,.wsb-rename-cancel:focus-visible,.wsb-session-main:focus-visible,.wsb-session-rename:focus-visible,.wsb-session-archive:focus-visible,.wsb-rail-btn:focus-visible,.wsb-empty-action:focus-visible,.wsb-more:focus-visible,.wsb-search-clear:focus-visible,.wsb-confirm-primary:focus-visible,.wsb-confirm-secondary:focus-visible,.wsb-archived-head:focus-visible,.wsb-restore:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4c8df6);outline-offset:1px}',
       '.wsb-search{display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;border:1px solid transparent;border-radius:7px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary)}',
       '.wsb-search:focus-within{border-color:var(--dsw-alias-brand-primary,#4c8df6);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}',
       '.wsb-search-icon{flex:none;display:inline-flex;align-items:center;justify-content:center}',
@@ -660,6 +675,46 @@ window.__ModuleLoader__.load({
       })
     }
 
+    /**
+     * Freeze the current order while automatic sorting is off. Rows and sessions
+     * missing from the snapshot (newly added) append in their existing relative
+     * order; archived/deleted ones simply disappear.
+     */
+    function applyFrozenOrder(rows, snapshot) {
+      const workspaceOrder = snapshot !== null && snapshot !== undefined && Array.isArray(snapshot.workspaces) ? snapshot.workspaces : []
+      const workspaceRank = new Map(workspaceOrder.map((key, index) => [key, index]))
+      const rowIndex = new Map(rows.map((row, index) => [row.key, index]))
+      const ordered = rows.slice().sort((left, right) => {
+        const leftRank = workspaceRank.has(left.key) ? workspaceRank.get(left.key) : Infinity
+        const rightRank = workspaceRank.has(right.key) ? workspaceRank.get(right.key) : Infinity
+        if (leftRank !== rightRank) return leftRank - rightRank
+        return rowIndex.get(left.key) - rowIndex.get(right.key)
+      })
+      const sessionOrder = snapshot !== null && snapshot !== undefined && snapshot.sessions !== null && typeof snapshot.sessions === 'object' && !Array.isArray(snapshot.sessions)
+        ? snapshot.sessions
+        : {}
+      return ordered.map((row) => {
+        const frozen = sessionOrder[row.key]
+        if (!Array.isArray(frozen)) return row
+        const sessionRank = new Map(frozen.map((id, index) => [id, index]))
+        const sessionIndex = new Map(row.sessions.map((session, index) => [session.id, index]))
+        const sessions = row.sessions.slice().sort((left, right) => {
+          const leftRank = sessionRank.has(left.id) ? sessionRank.get(left.id) : Infinity
+          const rightRank = sessionRank.has(right.id) ? sessionRank.get(right.id) : Infinity
+          if (leftRank !== rightRank) return leftRank - rightRank
+          return sessionIndex.get(left.id) - sessionIndex.get(right.id)
+        })
+        let changed = false
+        for (let index = 0; index < sessions.length; index++) {
+          if (sessions[index] !== row.sessions[index]) {
+            changed = true
+            break
+          }
+        }
+        return changed ? Object.assign({}, row, { sessions }) : row
+      })
+    }
+
     // ---------------------------------------------------------------------
     // Time presentation
     // ---------------------------------------------------------------------
@@ -744,6 +799,22 @@ window.__ModuleLoader__.load({
 
     function readArchivedWorkspaces() {
       return readStoredMap(ARCHIVED_WORKSPACES_KEY)
+    }
+
+    function readAutoSort() {
+      const raw = readStoredMap(AUTO_SORT_KEY)
+      if (raw.enabled === false && Array.isArray(raw.workspaces)) {
+        return {
+          enabled: false,
+          workspaces: raw.workspaces.filter((key) => typeof key === 'string'),
+          sessions: raw.sessions !== null && typeof raw.sessions === 'object' && !Array.isArray(raw.sessions) ? raw.sessions : {},
+        }
+      }
+      return { enabled: true, workspaces: [], sessions: {} }
+    }
+
+    function writeAutoSort(value) {
+      writeStoredMap(AUTO_SORT_KEY, value)
     }
 
     function readManualOrder() {
@@ -1511,6 +1582,7 @@ window.__ModuleLoader__.load({
       const [doneExpanded, setDoneExpanded] = React.useState({})
       const [manualOrder, setManualOrder] = React.useState(readManualOrder)
       const [archivedWorkspaces, setArchivedWorkspaces] = React.useState(readArchivedWorkspaces)
+      const [autoSort, setAutoSort] = React.useState(readAutoSort)
       const [query, setQuery] = React.useState('')
       const [adding, setAdding] = React.useState(false)
       const [addError, setAddError] = React.useState(null)
@@ -1546,7 +1618,11 @@ window.__ModuleLoader__.load({
         () => buildModel(workspacesState, sessionsState, statuses, archivedWorkspaceSet),
         [workspacesState, sessionsState, statuses, archivedWorkspaceSet],
       )
-      const rows = React.useMemo(() => applyManualOrder(automaticRows, manualOrder), [automaticRows, manualOrder])
+      const orderedRows = React.useMemo(() => applyManualOrder(automaticRows, manualOrder), [automaticRows, manualOrder])
+      const rows = React.useMemo(
+        () => (autoSort.enabled ? orderedRows : applyFrozenOrder(orderedRows, autoSort)),
+        [orderedRows, autoSort],
+      )
       const queryActive = query.trim().length > 0
       const visibleRows = React.useMemo(() => filterRows(rows, query, tr), [rows, query, tr])
       const counts = React.useMemo(() => {
@@ -1610,6 +1686,22 @@ window.__ModuleLoader__.load({
         })
       }
 
+      const toggleAutoSort = () => {
+        if (autoSort.enabled) {
+          const snapshot = {
+            enabled: false,
+            workspaces: rows.map((row) => row.key),
+            sessions: Object.fromEntries(rows.map((row) => [row.key, row.sessions.map((session) => session.id)])),
+          }
+          writeAutoSort(snapshot)
+          setAutoSort(snapshot)
+        } else {
+          const next = { enabled: true, workspaces: [], sessions: {} }
+          writeAutoSort(next)
+          setAutoSort(next)
+        }
+      }
+
       const resetOrder = () => {
         const next = { workspaces: {}, sessions: {} }
         writeManualOrder(next)
@@ -1619,12 +1711,25 @@ window.__ModuleLoader__.load({
       const reorderSessions = (groupKey, state, sourceId, targetId, half) => {
         const row = rows.find((candidate) => candidate.key === groupKey)
         if (row === undefined) return
+        const full = row.sessions.map((session) => session.id)
+        if (!full.includes(sourceId) || !full.includes(targetId)) return
+        const nextList = reorderIds(full, sourceId, targetId, half)
+        if (!autoSort.enabled) {
+          setAutoSort((previous) => {
+            const next = Object.assign({}, previous, {
+              sessions: Object.assign({}, previous.sessions, { [groupKey]: nextList }),
+            })
+            writeAutoSort(next)
+            return next
+          })
+          return
+        }
         const group = row.sessions.filter((session) => session.state === state).map((session) => session.id)
         if (!group.includes(sourceId) || !group.includes(targetId)) return
-        const nextList = reorderIds(group, sourceId, targetId, half)
+        const groupList = reorderIds(group, sourceId, targetId, half)
         setManualOrder((previous) => {
           const groupLists = Object.assign({}, previous.sessions[groupKey] || {})
-          groupLists[state] = nextList
+          groupLists[state] = groupList
           const next = {
             workspaces: previous.workspaces,
             sessions: Object.assign({}, previous.sessions, { [groupKey]: groupLists }),
@@ -1658,11 +1763,22 @@ window.__ModuleLoader__.load({
           endWorkspaceDrag()
           return
         }
+        const full = rows.map((candidate) => candidate.key)
+        const nextList = reorderIds(full, source.key, target.key, half)
+        if (!autoSort.enabled) {
+          setAutoSort((previous) => {
+            const next = Object.assign({}, previous, { workspaces: nextList })
+            writeAutoSort(next)
+            return next
+          })
+          endWorkspaceDrag()
+          return
+        }
         const group = rows.filter((candidate) => candidate.state === source.state).map((candidate) => candidate.key)
-        const nextList = reorderIds(group, source.key, target.key, half)
+        const groupList = reorderIds(group, source.key, target.key, half)
         setManualOrder((previous) => {
           const next = {
-            workspaces: Object.assign({}, previous.workspaces, { [source.state]: nextList }),
+            workspaces: Object.assign({}, previous.workspaces, { [source.state]: groupList }),
             sessions: previous.sessions,
           }
           writeManualOrder(next)
@@ -1912,7 +2028,24 @@ window.__ModuleLoader__.load({
               { className: 'wsb-head-row' },
               h('span', { className: 'wsb-title' }, tr('title')),
               h('span', { className: 'wsb-total' }, tr(queryActive ? 'total.results' : 'total', { n: visibleRows.length })),
-              manualActive
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'wsb-autosort',
+                  role: 'switch',
+                  'aria-checked': autoSort.enabled,
+                  title: tr(autoSort.enabled ? 'autoSort.on' : 'autoSort.off'),
+                  onClick: toggleAutoSort,
+                },
+                h('span', { className: 'wsb-autosort-label' }, tr('autoSort.short')),
+                h(
+                  'span',
+                  { className: 'wsb-autosort-track', 'data-on': autoSort.enabled ? 'true' : 'false', 'aria-hidden': 'true' },
+                  h('span', { className: 'wsb-autosort-thumb' }),
+                ),
+              ),
+              manualActive && autoSort.enabled
                 ? h(
                   'button',
                   {
