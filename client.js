@@ -24,7 +24,6 @@ window.__ModuleLoader__.load({
     const RANK = { attention: 0, running: 1, done: 2 }
     const COLLAPSE_KEY = 'dsh.workspace-status-board.collapsed.v1'
     const ARCHIVED_WORKSPACES_KEY = 'dsh.workspace-status-board.archived-workspaces.v1'
-    const ORDER_KEY = 'dsh.workspace-status-board.order.v1'
     const AUTO_SORT_KEY = 'dsh.workspace-status-board.auto-sort.v1'
     const DONE_PREVIEW_LIMIT = 3
     const EMPTY_MAP = new Map()
@@ -69,10 +68,9 @@ window.__ModuleLoader__.load({
       'done.less': 'Show less',
       dragWorkspace: 'Drag to reorder workspace',
       dragTask: 'Drag to reorder task',
-      'order.reset': 'Reset to automatic order',
       'autoSort.short': 'Auto',
-      'autoSort.on': 'Auto sort on',
-      'autoSort.off': 'Auto sort off; order is frozen',
+      'autoSort.on': 'Auto sort on (turn off to drag)',
+      'autoSort.off': 'Auto sort off; drag to adjust order',
       'archive.action': 'Archive task',
       'archive.confirm': '"{name}" still has running work. Stop it and archive?',
       'archive.stop': 'Stop and archive',
@@ -149,10 +147,9 @@ window.__ModuleLoader__.load({
       'done.less': '收起已完成',
       dragWorkspace: '拖动调整工作区顺序',
       dragTask: '拖动调整任务顺序',
-      'order.reset': '恢复自动排序',
       'autoSort.short': '自动',
-      'autoSort.on': '自动排序：开',
-      'autoSort.off': '自动排序：关，顺序已冻结',
+      'autoSort.on': '自动排序：开（关闭后可拖拽）',
+      'autoSort.off': '自动排序：关，可拖拽调整顺序',
       'archive.action': '归档任务',
       'archive.confirm': '“{name}”仍有正在执行的工作。停止并归档？',
       'archive.stop': '停止并归档',
@@ -212,9 +209,7 @@ window.__ModuleLoader__.load({
       '.wsb-add{flex:none;width:22px;height:22px;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}',
       '.wsb-add:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}',
       '.wsb-add:disabled{opacity:.5;cursor:default}',
-      '.wsb-reset{flex:none;width:22px;height:22px;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}',
-      '.wsb-reset:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}',
-      '.wsb-add:focus-visible,.wsb-reset:focus-visible,.wsb-autosort:focus-visible,.wsb-chip:focus-visible,.wsb-toggle:focus-visible,.wsb-new:focus-visible,.wsb-ws-archive:focus-visible,.wsb-rename-action:focus-visible,.wsb-rename-save:focus-visible,.wsb-rename-cancel:focus-visible,.wsb-session-main:focus-visible,.wsb-session-rename:focus-visible,.wsb-session-archive:focus-visible,.wsb-rail-btn:focus-visible,.wsb-empty-action:focus-visible,.wsb-more:focus-visible,.wsb-search-clear:focus-visible,.wsb-confirm-primary:focus-visible,.wsb-confirm-secondary:focus-visible,.wsb-archived-head:focus-visible,.wsb-restore:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4c8df6);outline-offset:1px}',
+      '.wsb-add:focus-visible,.wsb-autosort:focus-visible,.wsb-chip:focus-visible,.wsb-toggle:focus-visible,.wsb-new:focus-visible,.wsb-ws-archive:focus-visible,.wsb-rename-action:focus-visible,.wsb-rename-save:focus-visible,.wsb-rename-cancel:focus-visible,.wsb-session-main:focus-visible,.wsb-session-rename:focus-visible,.wsb-session-archive:focus-visible,.wsb-rail-btn:focus-visible,.wsb-empty-action:focus-visible,.wsb-more:focus-visible,.wsb-search-clear:focus-visible,.wsb-confirm-primary:focus-visible,.wsb-confirm-secondary:focus-visible,.wsb-archived-head:focus-visible,.wsb-restore:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4c8df6);outline-offset:1px}',
       '.wsb-search{display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;border:1px solid transparent;border-radius:7px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary)}',
       '.wsb-search:focus-within{border-color:var(--dsw-alias-brand-primary,#4c8df6);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}',
       '.wsb-search-icon{flex:none;display:inline-flex;align-items:center;justify-content:center}',
@@ -626,56 +621,6 @@ window.__ModuleLoader__.load({
     }
 
     /**
-     * Apply browser-local manual positions. State priority stays authoritative:
-     * manual lists only reorder rows/tasks inside one state bucket. Items missing
-     * from a list (new sessions/workspaces) lead the listed ones in recency order,
-     * so a fresh completion cannot be buried behind a collapsed done preview.
-     */
-    function applyManualOrder(rows, order) {
-      const workspaceLists = order !== null && order !== undefined && order.workspaces !== undefined && order.workspaces !== null ? order.workspaces : {}
-      const sessionLists = order !== null && order !== undefined && order.sessions !== undefined && order.sessions !== null ? order.sessions : {}
-      const groups = new Map()
-      for (const row of rows) {
-        if (!groups.has(row.state)) groups.set(row.state, [])
-        groups.get(row.state).push(row)
-      }
-      const ordered = []
-      for (const state of STATES) {
-        const list = Array.isArray(workspaceLists[state]) ? workspaceLists[state] : []
-        const ranks = new Map(list.map((key, index) => [key, index]))
-        const group = (groups.get(state) || []).slice().sort((left, right) => {
-          const leftRank = ranks.has(left.key) ? ranks.get(left.key) : -1
-          const rightRank = ranks.has(right.key) ? ranks.get(right.key) : -1
-          if (leftRank !== rightRank) return leftRank - rightRank
-          return compareWorkspaceRows(left, right)
-        })
-        for (const row of group) ordered.push(row)
-      }
-      return ordered.map((row) => {
-        const lists = sessionLists[row.key]
-        if (lists === null || lists === undefined || typeof lists !== 'object' || Array.isArray(lists)) return row
-        const sessions = row.sessions.slice().sort((left, right) => {
-          if (left.rank !== right.rank) return left.rank - right.rank
-          const list = Array.isArray(lists[left.state]) ? lists[left.state] : []
-          const leftIndex = list.indexOf(left.id)
-          const rightIndex = list.indexOf(right.id)
-          const leftRank = leftIndex === -1 ? -1 : leftIndex
-          const rightRank = rightIndex === -1 ? -1 : rightIndex
-          if (leftRank !== rightRank) return leftRank - rightRank
-          return compareSessionRows(left, right)
-        })
-        let changed = false
-        for (let index = 0; index < sessions.length; index++) {
-          if (sessions[index] !== row.sessions[index]) {
-            changed = true
-            break
-          }
-        }
-        return changed ? Object.assign({}, row, { sessions }) : row
-      })
-    }
-
-    /**
      * Freeze the current order while automatic sorting is off. Rows and sessions
      * missing from the snapshot (newly added) append in their existing relative
      * order; archived/deleted ones simply disappear.
@@ -817,31 +762,6 @@ window.__ModuleLoader__.load({
       writeStoredMap(AUTO_SORT_KEY, value)
     }
 
-    function readManualOrder() {
-      const raw = readStoredMap(ORDER_KEY)
-      return {
-        workspaces: raw.workspaces !== null && typeof raw.workspaces === 'object' && !Array.isArray(raw.workspaces) ? raw.workspaces : {},
-        sessions: raw.sessions !== null && typeof raw.sessions === 'object' && !Array.isArray(raw.sessions) ? raw.sessions : {},
-      }
-    }
-
-    function writeManualOrder(value) {
-      writeStoredMap(ORDER_KEY, value)
-    }
-
-    function hasManualOrder(order) {
-      for (const list of Object.values(order.workspaces)) {
-        if (Array.isArray(list) && list.length > 0) return true
-      }
-      for (const group of Object.values(order.sessions)) {
-        if (group === null || typeof group !== 'object') continue
-        for (const list of Object.values(group)) {
-          if (Array.isArray(list) && list.length > 0) return true
-        }
-      }
-      return false
-    }
-
     function reorderIds(ids, sourceId, targetId, half) {
       if (sourceId === targetId) return ids
       const next = ids.filter((id) => id !== sourceId)
@@ -952,16 +872,6 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function ResetIcon({ size }) {
-      const dimension = size === undefined ? 14 : size
-      return h(
-        'svg',
-        { width: dimension, height: dimension, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': 'true', focusable: 'false', style: { display: 'block' } },
-        h('path', { d: 'M4.5 9a7.5 7.5 0 1 1 .9 5.4' }),
-        h('path', { d: 'M4 4.5v5h5' }),
-      )
-    }
-
     function PencilIcon({ size }) {
       const dimension = size === undefined ? 13 : size
       return h(
@@ -990,7 +900,7 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function WorkspaceEntry({ row, now, collapsed, queryActive, doneExpanded, workspaceDragging, workspaceDropHalf, workspaceCanDrop, onWorkspaceDragStart, onWorkspaceDragEnd, onWorkspaceHover, onWorkspaceDrop, onToggle, onToggleDone, onOpenSession, onNewSession, onReorderSessions, onArchive, archiveBusy, onArchiveWorkspace, onRename, onRenameSession, currentId, tr }) {
+    function WorkspaceEntry({ row, now, collapsed, queryActive, dragEnabled, doneExpanded, workspaceDragging, workspaceDropHalf, workspaceCanDrop, onWorkspaceDragStart, onWorkspaceDragEnd, onWorkspaceHover, onWorkspaceDrop, onToggle, onToggleDone, onOpenSession, onNewSession, onReorderSessions, onArchive, archiveBusy, onArchiveWorkspace, onRename, onRenameSession, currentId, tr }) {
       const [sessionDrag, setSessionDrag] = React.useState(null)
       const [sessionDrop, setSessionDrop] = React.useState(null)
       const [renaming, setRenaming] = React.useState(false)
@@ -1014,7 +924,7 @@ window.__ModuleLoader__.load({
       }
 
       const startSessionDrag = (session) => {
-        if (queryActive) return
+        if (!dragEnabled) return
         setSessionDrag({ id: session.id, state: session.state })
         setSessionDrop(null)
       }
@@ -1023,14 +933,14 @@ window.__ModuleLoader__.load({
         setSessionDrop(null)
       }
       const dragOverSession = (session) => (event) => {
-        if (queryActive || sessionDrag === null) return null
+        if (!dragEnabled || sessionDrag === null) return null
         if (sessionDrag.state !== session.state || sessionDrag.id === session.id) return null
         const half = halfOf(event)
         setSessionDrop({ id: session.id, half })
         return half
       }
       const dropSession = (session) => (event) => {
-        if (queryActive || sessionDrag === null) return
+        if (!dragEnabled || sessionDrag === null) return
         const half = halfOf(event)
         onReorderSessions(row.key, sessionDrag.state, sessionDrag.id, session.id, half)
         setSessionDrag(null)
@@ -1083,7 +993,7 @@ window.__ModuleLoader__.load({
             onWorkspaceDrop(halfOf(event))
           },
         },
-        queryActive
+        !dragEnabled
           ? null
           : h(
             'span',
@@ -1180,6 +1090,7 @@ window.__ModuleLoader__.load({
             now,
             currentId,
             queryActive,
+            dragEnabled,
             archiveBusy,
             dragActive: sessionDrag !== null && sessionDrag.id === session.id,
             dropHalf: sessionDrop !== null && sessionDrop.id === session.id ? sessionDrop.half : null,
@@ -1272,7 +1183,7 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function SessionEntry({ session, now, currentId, dragActive, dropHalf, queryActive, archiveBusy, onOpen, onArchive, onRename, onDragStart, onDragEnd, onDragOver, onDrop, tr }) {
+    function SessionEntry({ session, now, currentId, dragActive, dropHalf, queryActive, dragEnabled, archiveBusy, onOpen, onArchive, onRename, onDragStart, onDragEnd, onDragOver, onDrop, tr }) {
       const [renaming, setRenaming] = React.useState(false)
       const [renameDraft, setRenameDraft] = React.useState('')
       const [renameBusy, setRenameBusy] = React.useState(false)
@@ -1393,7 +1304,7 @@ window.__ModuleLoader__.load({
               onDrop(event)
             },
           },
-        queryActive
+        !dragEnabled
           ? null
           : h(
             'span',
@@ -1580,7 +1491,6 @@ window.__ModuleLoader__.load({
       const now = useNow(30000)
       const [collapsed, setCollapsed] = React.useState(readCollapsed)
       const [doneExpanded, setDoneExpanded] = React.useState({})
-      const [manualOrder, setManualOrder] = React.useState(readManualOrder)
       const [archivedWorkspaces, setArchivedWorkspaces] = React.useState(readArchivedWorkspaces)
       const [autoSort, setAutoSort] = React.useState(readAutoSort)
       const [query, setQuery] = React.useState('')
@@ -1618,12 +1528,12 @@ window.__ModuleLoader__.load({
         () => buildModel(workspacesState, sessionsState, statuses, archivedWorkspaceSet),
         [workspacesState, sessionsState, statuses, archivedWorkspaceSet],
       )
-      const orderedRows = React.useMemo(() => applyManualOrder(automaticRows, manualOrder), [automaticRows, manualOrder])
       const rows = React.useMemo(
-        () => (autoSort.enabled ? orderedRows : applyFrozenOrder(orderedRows, autoSort)),
-        [orderedRows, autoSort],
+        () => (autoSort.enabled ? automaticRows : applyFrozenOrder(automaticRows, autoSort)),
+        [automaticRows, autoSort],
       )
       const queryActive = query.trim().length > 0
+      const dragEnabled = !autoSort.enabled && !queryActive
       const visibleRows = React.useMemo(() => filterRows(rows, query, tr), [rows, query, tr])
       const counts = React.useMemo(() => {
         const next = { attention: 0, running: 0, done: 0 }
@@ -1647,7 +1557,6 @@ window.__ModuleLoader__.load({
           .sort((left, right) => left.title.localeCompare(right.title))
       }, [workspacesState, archivedWorkspaceSet, tr])
       const currentId = panelActive ? null : currentSessionId(sessionsState)
-      const manualActive = hasManualOrder(manualOrder)
 
       const toggle = (key) => {
         setCollapsed((previous) => {
@@ -1687,6 +1596,8 @@ window.__ModuleLoader__.load({
       }
 
       const toggleAutoSort = () => {
+        setWorkspaceDrag(null)
+        setWorkspaceDrop(null)
         if (autoSort.enabled) {
           const snapshot = {
             enabled: false,
@@ -1702,45 +1613,23 @@ window.__ModuleLoader__.load({
         }
       }
 
-      const resetOrder = () => {
-        const next = { workspaces: {}, sessions: {} }
-        writeManualOrder(next)
-        setManualOrder(next)
-      }
-
       const reorderSessions = (groupKey, state, sourceId, targetId, half) => {
         const row = rows.find((candidate) => candidate.key === groupKey)
         if (row === undefined) return
         const full = row.sessions.map((session) => session.id)
         if (!full.includes(sourceId) || !full.includes(targetId)) return
         const nextList = reorderIds(full, sourceId, targetId, half)
-        if (!autoSort.enabled) {
-          setAutoSort((previous) => {
-            const next = Object.assign({}, previous, {
-              sessions: Object.assign({}, previous.sessions, { [groupKey]: nextList }),
-            })
-            writeAutoSort(next)
-            return next
+        setAutoSort((previous) => {
+          const next = Object.assign({}, previous, {
+            sessions: Object.assign({}, previous.sessions, { [groupKey]: nextList }),
           })
-          return
-        }
-        const group = row.sessions.filter((session) => session.state === state).map((session) => session.id)
-        if (!group.includes(sourceId) || !group.includes(targetId)) return
-        const groupList = reorderIds(group, sourceId, targetId, half)
-        setManualOrder((previous) => {
-          const groupLists = Object.assign({}, previous.sessions[groupKey] || {})
-          groupLists[state] = groupList
-          const next = {
-            workspaces: previous.workspaces,
-            sessions: Object.assign({}, previous.sessions, { [groupKey]: groupLists }),
-          }
-          writeManualOrder(next)
+          writeAutoSort(next)
           return next
         })
       }
 
       const startWorkspaceDrag = (row) => {
-        if (queryActive) return
+        if (queryActive || autoSort.enabled) return
         setWorkspaceDrag({ key: row.key, state: row.state })
         setWorkspaceDrop(null)
       }
@@ -1756,7 +1645,10 @@ window.__ModuleLoader__.load({
       }
 
       const dropWorkspace = (key, half) => {
-        if (workspaceDrag === null) return
+        if (workspaceDrag === null || autoSort.enabled) {
+          endWorkspaceDrag()
+          return
+        }
         const source = rows.find((candidate) => candidate.key === workspaceDrag.key)
         const target = rows.find((candidate) => candidate.key === key)
         if (source === undefined || target === undefined || source.state !== target.state || source.key === target.key) {
@@ -1765,23 +1657,9 @@ window.__ModuleLoader__.load({
         }
         const full = rows.map((candidate) => candidate.key)
         const nextList = reorderIds(full, source.key, target.key, half)
-        if (!autoSort.enabled) {
-          setAutoSort((previous) => {
-            const next = Object.assign({}, previous, { workspaces: nextList })
-            writeAutoSort(next)
-            return next
-          })
-          endWorkspaceDrag()
-          return
-        }
-        const group = rows.filter((candidate) => candidate.state === source.state).map((candidate) => candidate.key)
-        const groupList = reorderIds(group, source.key, target.key, half)
-        setManualOrder((previous) => {
-          const next = {
-            workspaces: Object.assign({}, previous.workspaces, { [source.state]: groupList }),
-            sessions: previous.sessions,
-          }
-          writeManualOrder(next)
+        setAutoSort((previous) => {
+          const next = Object.assign({}, previous, { workspaces: nextList })
+          writeAutoSort(next)
           return next
         })
         endWorkspaceDrag()
@@ -1966,10 +1844,11 @@ window.__ModuleLoader__.load({
               now,
               collapsed: collapsed[row.key] === true,
               queryActive,
+              dragEnabled,
               doneExpanded: doneExpanded[row.key] === true,
               workspaceDragging: workspaceDrag !== null && workspaceDrag.key === row.key,
               workspaceDropHalf: workspaceDrop !== null && workspaceDrop.key === row.key ? workspaceDrop.half : null,
-              workspaceCanDrop: workspaceDrag !== null && !queryActive && workspaceDrag.key !== row.key && workspaceDrag.state === row.state,
+              workspaceCanDrop: dragEnabled && workspaceDrag !== null && workspaceDrag.key !== row.key && workspaceDrag.state === row.state,
               onWorkspaceDragStart: () => startWorkspaceDrag(row),
               onWorkspaceDragEnd: endWorkspaceDrag,
               onWorkspaceHover: (half) => hoverWorkspace(row.key, half),
@@ -2045,19 +1924,6 @@ window.__ModuleLoader__.load({
                   h('span', { className: 'wsb-autosort-thumb' }),
                 ),
               ),
-              manualActive && autoSort.enabled
-                ? h(
-                  'button',
-                  {
-                    type: 'button',
-                    className: 'wsb-reset',
-                    title: tr('order.reset'),
-                    'aria-label': tr('order.reset'),
-                    onClick: resetOrder,
-                  },
-                  h(ResetIcon, { size: 14 }),
-                )
-                : null,
               h(
                 'button',
                 {

@@ -30,8 +30,8 @@ DSH 默认的侧边栏工作区列表按最近更新时间或手动顺序排列�
 - **工作区行精简展示**：只显示工作区名称和状态标识，不显示任务数量、路径或最近活动时间；路径仍可用于搜索。
 - **任务列表自动收起**：进行中的任务全部展示；已完成默认最多展示 3 条（搜索时同样适用），其余收在「另外 N 个已完成」后，可展开，也可再次收起。展开状态只在本次页面生命周期内保留，刷新后恢复默认 3 条。
 - **搜索**：按工作区名称、工作区路径、任务标题过滤；搜索期间分组自动展开，结果按显示的任务重新聚合状态并排序。
-- **拖拽排序**：工作区和任务都有拖拽手柄；只在**同一状态分组内**调整顺序，状态优先级不会被拖坏。手动位置优先于活动时间，头部提供「恢复自动排序」清除全部手动顺序。顺序保存在浏览器 localStorage。
-- **自动排序开关**：顶部「自动」开关默认开启，按「状态 → 时间」排序；关闭后冻结当前工作区与任务的完整顺序，归档会话、任务状态变化或新活动都不会再移动已有位置。冻结顺序保存在 localStorage，刷新后保持；关闭状态下仍可拖拽微调，重新开启开关即恢复自动排序。
+- **拖拽排序（仅关闭自动排序时）**：自动排序开启时严格按状态/时间排列，不显示拖拽手柄；关闭后冻结当前顺序并显示手柄，可拖拽微调冻结顺序。拖拽只允许在同一状态分组内，调整结果保存在 `auto-sort` 冻结快照中。
+- **自动排序开关**：顶部「自动」开关默认开启，按「状态 → 时间」排序；关闭后冻结当前工作区与任务的完整顺序，归档会话、任务状态变化或新活动都不会再移动已有位置。冻结顺序保存在 localStorage，刷新后保持；关闭状态下可拖拽微调，重新开启开关即恢复自动排序并隐藏拖拽手柄。
 - **任务归档与恢复**：任务行悬停显示归档按钮。普通任务直接归档；仍有运行中工作时，Host 会拒绝静默归档，看板弹出「停止并归档」确认，确认后以 `stopActivity: true` 停止该会话的回合/子代理/后台工作并归档。已归档任务进入底部「已归档」区，可展开并恢复。
 - **工作区归档与恢复**：工作区标题悬停显示归档按钮；归档只隐藏该工作区并保留其注册与会话，不写 Host。归档工作区进入底部「已归档工作区（N）」区，可随时恢复；归档期间不参与状态排序，也不出现在搜索结果中。
 - **工作区重命名**：悬停工作区标题出现铅笔按钮；点击后在工作区下方展开内联编辑框，`Enter` 保存、`Escape` 取消，空白名称禁用保存。通过 Host 的 `workspaces.rename` 写入，成功后列表实时更新，失败显示错误条。
@@ -85,38 +85,48 @@ dsh plugin --profile <profile> add github:CYF736222347/dsh-workspace-status-boar
 1. 顶部「**自动**」开关：开启时按状态/时间自动排序；关闭后冻结当前工作区与任务顺序，归档或状态变化不再移动位置，可拖拽微调。
 2. 顶部搜索框按工作区名、路径或任务标题过滤；`Escape` 或 × 清空。
 3. 工作区标题点击展开/收起；任务行点击打开会话。
-4. 拖动工作区标题左侧或任务行左侧的手柄，在同一状态内调整顺序。
+4. 关闭顶部「自动」开关后，拖动工作区标题左侧或任务行左侧的手柄，可微调冻结顺序；自动排序开启时不显示手柄。
 5. 悬停工作区标题点击铅笔按钮，内联修改名称；`Enter` 保存、`Escape` 取消。
 6. 悬停任务行点击铅笔按钮，内联修改任务标题；`Enter` 保存、`Escape` 取消。
-7. 有手动顺序时，头部出现「恢复自动排序」，点击回到纯「状态 → 时间」排序。
-8. 任务行悬停显示归档按钮；运行中的任务会先出现停止并归档确认。
-9. 工作区标题悬停显示归档按钮；归档整组后可在底部「已归档工作区（N）」区恢复。
-10. 底部「已归档（N）」区可展开，逐条恢复任务。
-11. 工作区标题悬停「＋」新建会话；顶部「＋」添加工作区（原生选择器，或路径输入框）。
+7. 任务行悬停显示归档按钮；运行中的任务会先出现停止并归档确认。
+8. 工作区标题悬停显示归档按钮；归档整组后可在底部「已归档工作区（N）」区恢复。
+9. 底部「已归档（N）」区可展开，逐条恢复任务。
+10. 工作区标题悬停「＋」新建会话；顶部「＋」添加工作区（原生选择器，或路径输入框）。
 
 ### 依赖与配置
 
 - **运行时依赖**：无 npm 运行时依赖。React 18 由 DSH 浏览器模块表提供。
 - **DSH 依赖**：`sidebar.workspaces` 的标准 Hook（`useWorkspaces` / `useSessions` / `useSessionStatus` / `usePanelInfo`）以及 `uiWorkspace`、`workspaces` 客户服务。
 - **必需配置**：无。`package.json` 已声明 `dsh.bundle` 与 `dsh.client`，`cordis.patch.yml` 插入 id 为 `workspace-status-board` 的 Loader 行。
-- **本地状态**：折叠、工作区归档、手动顺序、自动排序开关与冻结顺序保存在当前浏览器 localStorage：
+- **本地状态**：折叠、工作区归档、自动排序开关与冻结顺序保存在当前浏览器 localStorage：
   - `dsh.workspace-status-board.collapsed.v1`
   - `dsh.workspace-status-board.archived-workspaces.v1`
-  - `dsh.workspace-status-board.order.v1`
   - `dsh.workspace-status-board.auto-sort.v1`
-  已完成展开状态只在内存中保留，不跨刷新。
+  已完成展开状态只在内存中保留，不跨刷新。旧版本的 `order.v1` 手动顺序键不再使用。
 - **归档**：任务归档通过 Host 的 `workspaces.archiveSession` / `unarchiveSession`；工作区归档是浏览器本地隐藏，不调用 Host；**工作区重命名**通过 `workspaces.rename`；**任务重命名**通过 `sessions.using(..., reference.binding.session.rename(title))`；拖拽顺序不会写回 Host 工作区注册顺序。
 
 ### 已知取舍
 
-看板覆盖原生浏览区，因此原生区域的消息内容全文搜索、置顶、归档筛选的三种模式、工作区删除菜单不在看板内；这些可通过禁用插件恢复。工作区与任务重命名均已提供，拖拽只在同一状态内生效，且顺序是浏览器本地的；触屏环境不保证 HTML5 拖拽可用。搜索期间「已归档」区暂时隐藏。
+看板覆盖原生浏览区，因此原生区域的消息内容全文搜索、置顶、归档筛选的三种模式、工作区删除菜单不在看板内；这些可通过禁用插件恢复。工作区与任务重命名均已提供；拖拽仅在自动排序关闭时可用，且只在同一状态内生效，顺序是浏览器本地的；触屏环境不保证 HTML5 拖拽可用。搜索期间「已归档」区暂时隐藏。
 
 ### 验证
 
 - `client.js` / `index.js` 通过 `node --check`，CSS 括号平衡，中英文 locale 键集与 JSON 对齐。
-- 纯逻辑测试覆盖：状态分组、同状态时间排序、手动顺序、跨状态不可移动、已完成 3 条上限、搜索聚合、归档列表与拒绝识别。
+- 纯逻辑测试覆盖：状态分组、同状态时间排序、自动排序冻结、冻结顺序持久化、拖拽仅在关闭自动排序时启用、已完成 3 条上限（含搜索）、工作区归档、任务归档与错误识别。
 - 安装后通过 Slot 实时检查确认 `sidebar.workspaces` 的 `priority: -1` 占位者 active、原生 `priority: 0` inactive。
 - 视觉渲染与真实拖拽手感需在页面刷新后人工确认。
+
+### 版本更新
+
+| 版本 | 更新内容 |
+| --- | --- |
+| **1.6.0** | 拖拽仅在关闭自动排序时启用；关闭后拖拽直接调整冻结顺序，开启自动排序时隐藏拖拽手柄；README 增加版本更新记录。 |
+| **1.5.0** | 顶部新增「自动」排序开关；关闭时冻结工作区与任务顺序并持久化，归档会话或状态变化不再移动已有位置。 |
+| **1.4.0** | 新增工作区归档/恢复（浏览器本地隐藏，不删除注册）；已完成任务在搜索时也最多显示 3 条，展开状态不再跨刷新持久化。 |
+| **1.3.0** | 添加工作区改用桌面原生目录选择器；无原生能力时提供绝对路径输入；修复 browse/native 目录选择器组合导致的报错；README 增加效果示意图。 |
+| **1.2.0** | 新增任务重命名：任务行悬停铅笔按钮，内联编辑，`Enter` 保存 / `Escape` 取消。 |
+| **1.1.0** | 新增工作区重命名：工作区标题悬停铅笔按钮，内联编辑，`Enter` 保存 / `Escape` 取消。 |
+| **1.0.0** | 首个版本：状态优先排序（需介入 → 执行中 → 已完成）、三态视觉标识、搜索、已完成 3 条折叠、任务归档/恢复、同状态拖拽、折叠轨道、三色计数、中英双语、添加工作区与新建会话。 |
 
 ### License
 
@@ -134,8 +144,8 @@ MIT。见 [LICENSE](LICENSE)。
 - Workspace rows show only the name and status marker — no task count, path, or relative time; paths remain searchable.
 - In-progress tasks are always shown; done tasks default to the 3 newest, in search results too, with the rest behind a “more done” toggle. Expansion is in-memory only and resets on reload.
 - Search across workspace name, path, and task title; results re-aggregate status and order from displayed tasks.
-- Drag reordering of workspaces and tasks **within the same status group**; manual positions beat recency, and a “reset to automatic order” action clears them. Order is browser-local.
-- **Auto-sort switch** at the top, on by default: turning it off freezes the complete workspace and task order, so archiving a session or a status change no longer moves existing rows. The frozen order survives reloads in localStorage; dragging still fine-tunes it, and turning the switch back on resumes automatic sorting.
+- Drag reordering of workspaces and tasks **only when auto-sort is off**, within the same status group; dragging adjusts the frozen order. When auto-sort is on, the board follows state/time strictly and hides the drag handles.
+- **Auto-sort switch** at the top, on by default: turning it off freezes the complete workspace and task order, so archiving a session or a status change no longer moves existing rows, and enables drag handles to fine-tune the frozen order. The frozen order survives reloads in localStorage; turning the switch back on resumes automatic sorting and hides the handles.
 - Archive a task from its hover action. If work is still running, the host refuses a quiet archive and the board asks to stop and archive (`stopActivity: true`). Archived tasks move to a bottom “Archived” section with per-task restore.
 - Archive a workspace from its hover action. This is a browser-local hide that keeps the registration and its sessions; archived workspaces move to a bottom “Archived workspaces” section with restore, and do not participate in sorting or search while archived.
 - Rename a workspace from its hover pencil: an inline editor opens under the row, `Enter` saves, `Escape` cancels, and blank names cannot be saved. Renames go through the host's `workspaces.rename`; the list updates live and failures show an error notice.
@@ -153,8 +163,8 @@ dsh plugin --profile <profile> add github:CYF736222347/dsh-workspace-status-boar
 
 Refresh the page once after installation. The plugin shadows the shipped WorkspaceBrowser at `priority: -1`; disable or remove it to restore the native browsing region. Do not keep a development copy and the GitHub version in the same profile: both register at the same priority in a single-occupant slot.
 
-**Dependencies and configuration.** No npm runtime dependencies; React 18 is supplied by the host. Uses the `sidebar.workspaces` standard hooks and the `uiWorkspace` / `workspaces` client services. No required configuration; `dsh.bundle` and `dsh.client` are declared in `package.json`, and `cordis.patch.yml` inserts the `workspace-status-board` loader row. Collapse, archived workspaces, manual order, and the auto-sort switch plus its frozen order are stored in browser localStorage; done-task expansion is in-memory only.
+**Dependencies and configuration.** No npm runtime dependencies; React 18 is supplied by the host. Uses the `sidebar.workspaces` standard hooks and the `uiWorkspace` / `workspaces` client services. No required configuration; `dsh.bundle` and `dsh.client` are declared in `package.json`, and `cordis.patch.yml` inserts the `workspace-status-board` loader row. Collapse, archived workspaces, and the auto-sort switch plus its frozen order are stored in browser localStorage; done-task expansion is in-memory only.
 
-**Known trade-offs.** Full-text message search, pinning, three-way archive filters, and the workspace delete menu from the native browser are not included; workspace rename is provided; workspace archive is a browser-local hide rather than a Host mutation; the auto-sort switch and frozen order are browser-local; drag order is limited to one status group and is browser-local; touch drag is not guaranteed; archived workspaces and archived tasks are hidden while searching. Add-workspace uses the desktop native chooser when available and a manual absolute-path field otherwise, not the in-app browse dialog.
+**Known trade-offs.** Full-text message search, pinning, three-way archive filters, and the workspace delete menu from the native browser are not included; workspace rename is provided; workspace archive is a browser-local hide rather than a Host mutation; the auto-sort switch and frozen order are browser-local; drag is available only while auto-sort is off and is limited to one status group; touch drag is not guaranteed; archived workspaces and archived tasks are hidden while searching. Add-workspace uses the desktop native chooser when available and a manual absolute-path field otherwise, not the in-app browse dialog.
 
 **License.** MIT.
