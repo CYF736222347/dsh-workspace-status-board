@@ -20,7 +20,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
 
     const NS = 'workspaceStatusBoard'
-    const PLUGIN_VERSION = '1.8.1'
+    const PLUGIN_VERSION = '1.8.2'
     const REPO_URL = 'https://github.com/CYF736222347/dsh-workspace-status-board'
     const REMOTE_PACKAGE_URL = 'https://cdn.jsdelivr.net/gh/CYF736222347/dsh-workspace-status-board@main/package.json'
     const REMOTE_PACKAGE_API = 'https://api.github.com/repos/CYF736222347/dsh-workspace-status-board/contents/package.json?ref=main'
@@ -357,7 +357,7 @@ window.__ModuleLoader__.load({
       '.wsb-restore{flex:none;padding:2px 7px;border:1px solid var(--dsw-alias-border-l2);border-radius:5px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:10.5px;cursor:pointer}',
       '.wsb-restore:hover{background:var(--dsw-alias-bg-layer-1)}',
       '.wsb-restore:disabled{opacity:.55;cursor:default}',
-      '.wsb-update-backdrop{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.55);pointer-events:auto}',
+      '.wsb-update-backdrop{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.55);pointer-events:auto;overscroll-behavior:contain}',
       '.wsb-update-dialog{position:relative;width:min(440px,100%);max-height:calc(100vh - 48px);overflow:auto;padding:18px;border:1px solid var(--dsw-alias-border-l2);border-radius:14px;background:var(--dsw-alias-bg-overlay);color:var(--dsw-alias-label-primary);box-shadow:0 24px 70px rgba(0,0,0,.4);font-size:13px;line-height:1.5}',
       '.wsb-update-close{position:absolute;top:10px;right:10px;width:24px;height:24px;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}',
       '.wsb-update-close:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}',
@@ -1674,12 +1674,7 @@ window.__ModuleLoader__.load({
           ]
       return h(
         'div',
-        {
-          className: 'wsb-update-backdrop',
-          onMouseDown: (event) => {
-            if (event.target === event.currentTarget && canDismiss) onClose()
-          },
-        },
+        { className: 'wsb-update-backdrop' },
         h(
           'section',
           {
@@ -2498,10 +2493,7 @@ window.__ModuleLoader__.load({
             return false
           },
           installUpdate: async () => {
-            const remote = ctx.get('remote')
-            const manager = remote !== undefined && remote !== null && remote.pluginManager !== undefined
-              ? remote.pluginManager
-              : ctx.get('remote.pluginManager')
+            const manager = ctx.remote !== undefined && ctx.remote !== null ? ctx.remote.pluginManager : undefined
             if (manager === undefined || manager === null || typeof manager.installBundle !== 'function') {
               throw new Error('Plugin manager is unavailable')
             }
@@ -2530,7 +2522,7 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots', 'locale', 'uiWorkspace', 'workspaces', 'sessions'],
+      inject: ['slots', 'locale', 'remote', 'remote.pluginManager', 'uiWorkspace', 'workspaces', 'sessions'],
       apply,
     }
   },

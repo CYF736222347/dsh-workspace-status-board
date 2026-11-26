@@ -123,6 +123,7 @@ dsh plugin --profile <profile> add github:CYF736222347/dsh-workspace-status-boar
 
 | 版本 | 更新内容 |
 | --- | --- |
+| **1.8.2** | 修复自动更新调用 `remote.pluginManager` 缺少注入导致的失败；更新弹窗不再因点击遮罩关闭，仅保留关闭按钮与 Esc。 |
 | **1.8.1** | 修复 1.8.0 自动更新客户端因硬注入 `remote` 服务而未激活的问题：改回可选 `ctx.get('remote')` 查找，保留自动安装、进度和失败提示。 |
 | **1.8.0** | 「更新」按钮改为真正安装：通过 pluginManager 安装最新 GitHub tarball，显示正在更新/失败原因，成功后自动刷新；需要重启时明确提示。 |
 | **1.7.1** | 修复 web 工作区已完成列表偶发全部展开：清理旧 `expanded-done`/`order` 状态，折叠工作区时重置已完成展开，展开时在已完成列表顶部提供「收起已完成」按钮；重装以刷新旧客户端缓存。 |
