@@ -66,7 +66,7 @@
   "renameTask.error": "任务重命名失败：{message}",
   "update.title": "插件有可用更新",
   "update.text": "当前 {current} → 最新 {latest}。",
-  "update.hint": "将自动安装最新 GitHub 版本，完成后自动刷新页面。",
+  "update.hint": "安装最新版本；完成后需要重启 DSH 才能加载新版本。",
   "update.repo": "打开 GitHub 仓库",
   "update.action": "更新",
   "update.skip": "跳过此版本",

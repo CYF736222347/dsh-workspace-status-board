@@ -20,7 +20,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
 
     const NS = 'workspaceStatusBoard'
-    const PLUGIN_VERSION = '1.8.3'
+    const PLUGIN_VERSION = '1.8.4'
     const REPO_URL = 'https://github.com/CYF736222347/dsh-workspace-status-board'
     const REMOTE_PACKAGE_URL = 'https://cdn.jsdelivr.net/gh/CYF736222347/dsh-workspace-status-board@main/package.json'
     const REMOTE_PACKAGE_API = 'https://api.github.com/repos/CYF736222347/dsh-workspace-status-board/contents/package.json?ref=main'
@@ -101,7 +101,7 @@ window.__ModuleLoader__.load({
       'renameTask.error': 'Could not rename task: {message}',
       'update.title': 'Plugin update available',
       'update.text': 'Current {current} → latest {latest}.',
-      'update.hint': 'Installs the latest GitHub build automatically; the page reloads when it finishes.',
+      'update.hint': 'Installs the latest build; restart DSH afterwards to load it.',
       'update.repo': 'Open GitHub repository',
       'update.action': 'Update',
       'update.skip': 'Skip this version',
@@ -193,7 +193,7 @@ window.__ModuleLoader__.load({
       'renameTask.error': '任务重命名失败：{message}',
       'update.title': '插件有可用更新',
       'update.text': '当前 {current} → 最新 {latest}。',
-      'update.hint': '将自动安装最新 GitHub 版本，完成后自动刷新页面。',
+      'update.hint': '安装最新版本；完成后需要重启 DSH 才能加载新版本。',
       'update.repo': '打开 GitHub 仓库',
       'update.action': '更新',
       'update.skip': '跳过此版本',
@@ -1749,27 +1749,23 @@ window.__ModuleLoader__.load({
       const tr = typeof props.t === 'function' ? props.t : (key) => key
       const openPlugins = typeof props.openPlugins === 'function' ? props.openPlugins : () => {}
       const installUpdate = typeof props.installUpdate === 'function' ? props.installUpdate : null
+      const readInstalledVersion = typeof props.readInstalledVersion === 'function' ? props.readInstalledVersion : async () => null
       const [notice, setNotice] = React.useState(null)
       const [updating, setUpdating] = React.useState(false)
       const [updateError, setUpdateError] = React.useState(null)
       const [completed, setCompleted] = React.useState(null)
 
       React.useEffect(() => {
-        if (!readReloadPending()) return
-        clearReloadPending()
-        if (typeof window !== 'undefined') window.location.reload()
-      }, [])
-
-      React.useEffect(() => {
         const prefs = readUpdatePrefs()
         if (prefs.never) return undefined
         let cancelled = false
-        checkForUpdateOnce().then((latest) => {
+        Promise.all([checkForUpdateOnce(), readInstalledVersion().catch(() => null)]).then(([latest, installed]) => {
           if (cancelled || typeof latest !== 'string') return
           const currentPrefs = readUpdatePrefs()
           if (currentPrefs.never || currentPrefs.skippedVersion === latest) return
-          if (!isNewerVersion(latest, PLUGIN_VERSION)) return
-          setNotice({ current: PLUGIN_VERSION, latest })
+          const current = typeof installed === 'string' && installed.length > 0 ? installed : PLUGIN_VERSION
+          if (!isNewerVersion(latest, current)) return
+          setNotice({ current, latest })
         })
         return () => {
           cancelled = true
@@ -1814,32 +1810,22 @@ window.__ModuleLoader__.load({
         }
         setUpdating(true)
         setUpdateError(null)
-        markReloadPending()
         try {
           const result = await installUpdate()
           if (result === null || result === undefined || typeof result !== 'object') {
             throw new Error('Update did not return a result')
           }
-          if (result.application === 'restart-required') {
-            clearReloadPending()
-            setCompleted('restart')
-            setUpdating(false)
-            return
-          }
-          if (result.application !== 'applied') {
+          if (result.application !== 'applied' && result.application !== 'restart-required') {
             const reason = result.error !== null && result.error !== undefined && typeof result.error.message === 'string'
               ? result.error.message
               : 'Update did not apply'
             throw new Error(reason)
           }
-          setCompleted('applied')
+          const prefs = readUpdatePrefs()
+          writeUpdatePrefs(Object.assign({}, prefs, { skippedVersion: notice.latest }))
+          setCompleted('restart')
           setUpdating(false)
-          setTimeout(() => {
-            clearReloadPending()
-            if (typeof window !== 'undefined') window.location.reload()
-          }, 50)
         } catch (error) {
-          clearReloadPending()
           setUpdateError(messageOf(error))
           setUpdating(false)
         }
@@ -2544,8 +2530,7 @@ window.__ModuleLoader__.load({
             const manager = ctx.remote !== undefined && ctx.remote !== null ? ctx.remote.pluginManager : undefined
             if (manager === undefined || manager === null || typeof manager.installBundle !== 'function') {
               throw new Error('Plugin manager is unavailable')
-            }
-            const makeSpec = () => UPDATE_SPEC + '#' + Date.now().toString(36) + '-' + Math.random().toString(16).slice(2)
+            }            const makeSpec = () => UPDATE_SPEC + '#' + Date.now().toString(36) + '-' + Math.random().toString(16).slice(2)
             const makeRequestId = () => (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
               ? crypto.randomUUID()
               : String(Date.now()) + '-' + Math.random().toString(16).slice(2))
@@ -2575,6 +2560,14 @@ window.__ModuleLoader__.load({
             const value = result.value
             if (alreadyInstalled(value)) return { application: 'applied', alreadyInstalled: true }
             return value
+          },
+          readInstalledVersion: async () => {
+            const manager = ctx.remote !== undefined && ctx.remote !== null ? ctx.remote.pluginManager : undefined
+            if (manager === undefined || manager === null || typeof manager.listBundles !== 'function') return null
+            const result = await manager.listBundles()
+            if (result === null || result === undefined || result.ok !== true || !Array.isArray(result.value)) return null
+            const entry = result.value.find((item) => item !== null && item !== undefined && item.name === '@local/dsh-workspace-status-board')
+            return entry !== null && entry !== undefined && typeof entry.version === 'string' ? entry.version : null
           },
         }),
       }, UpdateNotice))

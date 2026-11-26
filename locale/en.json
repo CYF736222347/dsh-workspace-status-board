@@ -66,7 +66,7 @@
   "renameTask.error": "Could not rename task: {message}",
   "update.title": "Plugin update available",
   "update.text": "Current {current} → latest {latest}.",
-  "update.hint": "Installs the latest GitHub build automatically; the page reloads when it finishes.",
+  "update.hint": "Installs the latest build; restart DSH afterwards to load it.",
   "update.repo": "Open GitHub repository",
   "update.action": "Update",
   "update.skip": "Skip this version",
