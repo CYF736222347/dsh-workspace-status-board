@@ -20,12 +20,13 @@ window.__ModuleLoader__.load({
     const h = React.createElement
 
     const NS = 'workspaceStatusBoard'
-    const PLUGIN_VERSION = '1.8.2'
+    const PLUGIN_VERSION = '1.8.3'
     const REPO_URL = 'https://github.com/CYF736222347/dsh-workspace-status-board'
     const REMOTE_PACKAGE_URL = 'https://cdn.jsdelivr.net/gh/CYF736222347/dsh-workspace-status-board@main/package.json'
     const REMOTE_PACKAGE_API = 'https://api.github.com/repos/CYF736222347/dsh-workspace-status-board/contents/package.json?ref=main'
     const UPDATE_SPEC = 'https://ghproxy.net/https://github.com/CYF736222347/dsh-workspace-status-board/archive/refs/heads/main.tar.gz'
     const UPDATE_KEY = 'dsh.workspace-status-board.update.v1'
+    const RELOAD_PENDING_KEY = 'dsh.workspace-status-board.reload-pending.v1'
     let updateCheckPromise = null
     const STATES = ['attention', 'running', 'done']
     const RANK = { attention: 0, running: 1, done: 2 }
@@ -823,6 +824,43 @@ window.__ModuleLoader__.load({
 
     function writeUpdatePrefs(value) {
       writeStoredMap(UPDATE_KEY, value)
+    }
+
+    function readReloadPending() {
+      try {
+        return window.sessionStorage.getItem(RELOAD_PENDING_KEY) === '1'
+      } catch {
+        try {
+          return window.localStorage.getItem(RELOAD_PENDING_KEY) === '1'
+        } catch {
+          return false
+        }
+      }
+    }
+
+    function markReloadPending() {
+      try {
+        window.sessionStorage.setItem(RELOAD_PENDING_KEY, '1')
+      } catch {
+        try {
+          window.localStorage.setItem(RELOAD_PENDING_KEY, '1')
+        } catch {
+          /* reload still happens from the success handler when possible */
+        }
+      }
+    }
+
+    function clearReloadPending() {
+      try {
+        window.sessionStorage.removeItem(RELOAD_PENDING_KEY)
+      } catch {
+        /* ignore */
+      }
+      try {
+        window.localStorage.removeItem(RELOAD_PENDING_KEY)
+      } catch {
+        /* ignore */
+      }
     }
 
     function versionParts(value) {
@@ -1717,6 +1755,12 @@ window.__ModuleLoader__.load({
       const [completed, setCompleted] = React.useState(null)
 
       React.useEffect(() => {
+        if (!readReloadPending()) return
+        clearReloadPending()
+        if (typeof window !== 'undefined') window.location.reload()
+      }, [])
+
+      React.useEffect(() => {
         const prefs = readUpdatePrefs()
         if (prefs.never) return undefined
         let cancelled = false
@@ -1770,12 +1814,14 @@ window.__ModuleLoader__.load({
         }
         setUpdating(true)
         setUpdateError(null)
+        markReloadPending()
         try {
           const result = await installUpdate()
           if (result === null || result === undefined || typeof result !== 'object') {
             throw new Error('Update did not return a result')
           }
           if (result.application === 'restart-required') {
+            clearReloadPending()
             setCompleted('restart')
             setUpdating(false)
             return
@@ -1789,9 +1835,11 @@ window.__ModuleLoader__.load({
           setCompleted('applied')
           setUpdating(false)
           setTimeout(() => {
+            clearReloadPending()
             if (typeof window !== 'undefined') window.location.reload()
-          }, 900)
+          }, 50)
         } catch (error) {
+          clearReloadPending()
           setUpdateError(messageOf(error))
           setUpdating(false)
         }
@@ -2497,10 +2545,11 @@ window.__ModuleLoader__.load({
             if (manager === undefined || manager === null || typeof manager.installBundle !== 'function') {
               throw new Error('Plugin manager is unavailable')
             }
+            const makeSpec = () => UPDATE_SPEC + '#' + Date.now().toString(36) + '-' + Math.random().toString(16).slice(2)
             const makeRequestId = () => (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
               ? crypto.randomUUID()
               : String(Date.now()) + '-' + Math.random().toString(16).slice(2))
-            const attempt = () => manager.installBundle(UPDATE_SPEC, { enabled: true, requestId: makeRequestId() })
+            const attempt = () => manager.installBundle(makeSpec(), { enabled: true, requestId: makeRequestId() })
             let result = await attempt()
             const failure = result !== null && result !== undefined && result.ok === false && result.error !== null && result.error !== undefined && typeof result.error.message === 'string'
               ? result.error.message
@@ -2509,13 +2558,23 @@ window.__ModuleLoader__.load({
               await new Promise((resolve) => setTimeout(resolve, 1200))
               result = await attempt()
             }
+            const alreadyInstalled = (value) => {
+              if (value === null || value === undefined) return false
+              const error = value.error !== null && value.error !== undefined ? value.error : value
+              const code = error !== null && error !== undefined && typeof error.code === 'string' ? error.code : ''
+              const message = error !== null && error !== undefined && typeof error.message === 'string' ? error.message : ''
+              return code === 'already-installed' || /already.?installed/i.test(message)
+            }
             if (result === null || result === undefined || result.ok !== true) {
+              if (alreadyInstalled(result)) return { application: 'applied', alreadyInstalled: true }
               const message = result !== null && result !== undefined && result.error !== null && result.error !== undefined && typeof result.error.message === 'string'
                 ? result.error.message
                 : 'Plugin install failed'
               throw new Error(message)
             }
-            return result.value
+            const value = result.value
+            if (alreadyInstalled(value)) return { application: 'applied', alreadyInstalled: true }
+            return value
           },
         }),
       }, UpdateNotice))
