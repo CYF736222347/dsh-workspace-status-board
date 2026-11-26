@@ -32,7 +32,7 @@ DSH 默认的侧边栏工作区列表按最近更新时间或手动顺序排列�
 - **搜索**：按工作区名称、工作区路径、任务标题过滤；搜索期间分组自动展开，结果按显示的任务重新聚合状态并排序。
 - **拖拽排序（仅关闭自动排序时）**：自动排序开启时严格按状态/时间排列，不显示拖拽手柄；关闭后冻结当前顺序并显示手柄，可拖拽微调冻结顺序。拖拽只允许在同一状态分组内，调整结果保存在 `auto-sort` 冻结快照中。
 - **自动排序开关**：顶部「自动」开关默认开启，按「状态 → 时间」排序；关闭后冻结当前工作区与任务的完整顺序，归档会话、任务状态变化或新活动都不会再移动已有位置。冻结顺序保存在 localStorage，刷新后保持；关闭状态下可拖拽微调，重新开启开关即恢复自动排序并隐藏拖拽手柄。
-- **启动更新检查**：每次启动读取 GitHub 仓库最新版本；发现高于当前安装版本时弹出全屏提示，可选择「更新」（打开插件管理页，找不到时回退到 GitHub 仓库）、「跳过此版本」或「不再提示更新」。跳过与不再提示记录在本地；若之后出现高于所跳过版本的新版本，会再次提示。
+- **启动更新检查**：每次启动读取 GitHub 仓库最新版本；发现高于当前安装版本时弹出全屏提示。点击「更新」会通过 pluginManager 安装最新 GitHub tarball，显示“正在更新”，成功后自动刷新页面；若安装要求重启则提示重启 DSH。也可选择「跳过此版本」或「不再提示更新」。跳过与不再提示记录在本地；若之后出现高于所跳过版本的新版本，会再次提示。
 - **任务归档与恢复**：任务行悬停显示归档按钮。普通任务直接归档；仍有运行中工作时，Host 会拒绝静默归档，看板弹出「停止并归档」确认，确认后以 `stopActivity: true` 停止该会话的回合/子代理/后台工作并归档。已归档任务进入底部「已归档」区，可展开并恢复。
 - **工作区归档与恢复**：工作区标题悬停显示归档按钮；归档只隐藏该工作区并保留其注册与会话，不写 Host。归档工作区进入底部「已归档工作区（N）」区，可随时恢复；归档期间不参与状态排序，也不出现在搜索结果中。
 - **工作区重命名**：悬停工作区标题出现铅笔按钮；点击后在工作区下方展开内联编辑框，`Enter` 保存、`Escape` 取消，空白名称禁用保存。通过 Host 的 `workspaces.rename` 写入，成功后列表实时更新，失败显示错误条。
@@ -93,7 +93,7 @@ dsh plugin --profile <profile> add github:CYF736222347/dsh-workspace-status-boar
 8. 工作区标题悬停显示归档按钮；归档整组后可在底部「已归档工作区（N）」区恢复。
 9. 底部「已归档（N）」区可展开，逐条恢复任务。
 10. 工作区标题悬停「＋」新建会话；顶部「＋」添加工作区（原生选择器，或路径输入框）。
-11. 启动时若发现新版本，会弹出更新提示；更新会打开插件管理页，也可通过提示中的 GitHub 仓库链接重新安装。
+11. 启动时若发现新版本，会弹出更新提示；点击「更新」自动安装并刷新页面，失败时显示原因，也可通过提示中的 GitHub 仓库链接手动安装。
 
 ### 依赖与配置
 
@@ -123,6 +123,7 @@ dsh plugin --profile <profile> add github:CYF736222347/dsh-workspace-status-boar
 
 | 版本 | 更新内容 |
 | --- | --- |
+| **1.8.0** | 「更新」按钮改为真正安装：通过 pluginManager 安装最新 GitHub tarball，显示正在更新/失败原因，成功后自动刷新；需要重启时明确提示。 |
 | **1.7.1** | 修复 web 工作区已完成列表偶发全部展开：清理旧 `expanded-done`/`order` 状态，折叠工作区时重置已完成展开，展开时在已完成列表顶部提供「收起已完成」按钮；重装以刷新旧客户端缓存。 |
 | **1.7.0** | 每次启动检查 GitHub 仓库版本；发现新版本时弹出更新提示，支持更新、跳过此版本、不再提示更新；更新偏好保存在本地。 |
 | **1.6.0** | 拖拽仅在关闭自动排序时启用；关闭后拖拽直接调整冻结顺序，开启自动排序时隐藏拖拽手柄；README 增加版本更新记录并更新示意图。 |
@@ -153,7 +154,7 @@ MIT。见 [LICENSE](LICENSE)。
 - Search across workspace name, path, and task title; results re-aggregate status and order from displayed tasks.
 - Drag reordering of workspaces and tasks **only when auto-sort is off**, within the same status group; dragging adjusts the frozen order. When auto-sort is on, the board follows state/time strictly and hides the drag handles.
 - **Auto-sort switch** at the top, on by default: turning it off freezes the complete workspace and task order, so archiving a session or a status change no longer moves existing rows, and enables drag handles to fine-tune the frozen order. The frozen order survives reloads in localStorage; turning the switch back on resumes automatic sorting and hides the handles.
-- **Startup update check**: on launch, reads the latest version from the GitHub repository and shows a modal when it is newer. The modal offers Update (opens the Plugins page, falling back to the repository), Skip this version, and Don’t remind me again. Skip and never-remind choices are stored locally; a newer version than the skipped one prompts again.
+- **Startup update check**: on launch, reads the latest version from the GitHub repository and shows a modal when it is newer. Update installs the latest GitHub tarball through the plugin manager, shows progress and failure reasons, then reloads the page; a restart is reported when required. Skip this version and Don’t remind me again are stored locally; a newer version than the skipped one prompts again.
 - Archive a task from its hover action. If work is still running, the host refuses a quiet archive and the board asks to stop and archive (`stopActivity: true`). Archived tasks move to a bottom “Archived” section with per-task restore.
 - Archive a workspace from its hover action. This is a browser-local hide that keeps the registration and its sessions; archived workspaces move to a bottom “Archived workspaces” section with restore, and do not participate in sorting or search while archived.
 - Rename a workspace from its hover pencil: an inline editor opens under the row, `Enter` saves, `Escape` cancels, and blank names cannot be saved. Renames go through the host's `workspaces.rename`; the list updates live and failures show an error notice.
@@ -173,6 +174,6 @@ Refresh the page once after installation. The plugin shadows the shipped Workspa
 
 **Dependencies and configuration.** No npm runtime dependencies; React 18 is supplied by the host. Uses the `sidebar.workspaces` standard hooks and the `uiWorkspace` / `workspaces` client services. No required configuration; `dsh.bundle` and `dsh.client` are declared in `package.json`, and `cordis.patch.yml` inserts the `workspace-status-board` loader row. Collapse, archived workspaces, the auto-sort switch plus its frozen order, and update-check preferences are stored in browser localStorage; done-task expansion is in-memory only.
 
-**Known trade-offs.** Full-text message search, pinning, three-way archive filters, and the workspace delete menu from the native browser are not included; workspace rename is provided; workspace archive is a browser-local hide rather than a Host mutation; the auto-sort switch and frozen order are browser-local; drag is available only while auto-sort is off and is limited to one status group; touch drag is not guaranteed; archived workspaces and archived tasks are hidden while searching. Add-workspace uses the desktop native chooser when available and a manual absolute-path field otherwise, not the in-app browse dialog. The update check contacts GitHub’s API first and jsDelivr as a fallback once per startup unless reminders are disabled; Update opens the Plugins page or repository instead of downloading and installing by itself. Version history is listed under 版本更新 above.
+**Known trade-offs.** Full-text message search, pinning, three-way archive filters, and the workspace delete menu from the native browser are not included; workspace rename is provided; workspace archive is a browser-local hide rather than a Host mutation; the auto-sort switch and frozen order are browser-local; drag is available only while auto-sort is off and is limited to one status group; touch drag is not guaranteed; archived workspaces and archived tasks are hidden while searching. Add-workspace uses the desktop native chooser when available and a manual absolute-path field otherwise, not the in-app browse dialog. The update check contacts GitHub’s API first and jsDelivr as a fallback once per startup unless reminders are disabled; Update installs the latest GitHub tarball through the plugin manager (via the ghproxy mirror), requires network access, and may request a DSH restart. Version history is listed under 版本更新 above.
 
 **License.** MIT.

@@ -20,10 +20,11 @@ window.__ModuleLoader__.load({
     const h = React.createElement
 
     const NS = 'workspaceStatusBoard'
-    const PLUGIN_VERSION = '1.7.1'
+    const PLUGIN_VERSION = '1.8.0'
     const REPO_URL = 'https://github.com/CYF736222347/dsh-workspace-status-board'
     const REMOTE_PACKAGE_URL = 'https://cdn.jsdelivr.net/gh/CYF736222347/dsh-workspace-status-board@main/package.json'
     const REMOTE_PACKAGE_API = 'https://api.github.com/repos/CYF736222347/dsh-workspace-status-board/contents/package.json?ref=main'
+    const UPDATE_SPEC = 'https://ghproxy.net/https://github.com/CYF736222347/dsh-workspace-status-board/archive/refs/heads/main.tar.gz'
     const UPDATE_KEY = 'dsh.workspace-status-board.update.v1'
     let updateCheckPromise = null
     const STATES = ['attention', 'running', 'done']
@@ -99,12 +100,17 @@ window.__ModuleLoader__.load({
       'renameTask.error': 'Could not rename task: {message}',
       'update.title': 'Plugin update available',
       'update.text': 'Current {current} → latest {latest}.',
-      'update.hint': 'Opens the Plugins page; if update is unavailable there, reinstall from the GitHub repository.',
+      'update.hint': 'Installs the latest GitHub build automatically; the page reloads when it finishes.',
       'update.repo': 'Open GitHub repository',
       'update.action': 'Update',
       'update.skip': 'Skip this version',
       'update.never': "Don't remind me again",
       'update.close': 'Close',
+      'update.installedTitle': 'Update installed',
+      'update.updating': 'Updating…',
+      'update.error': 'Update failed: {message}',
+      'update.applied': 'Update installed. Reloading the page…',
+      'update.restart': 'Update installed. Restart DSH to finish.',
       expand: 'Expand {name}',
       collapse: 'Collapse {name}',
       ungrouped: 'Ungrouped',
@@ -186,12 +192,17 @@ window.__ModuleLoader__.load({
       'renameTask.error': '任务重命名失败：{message}',
       'update.title': '插件有可用更新',
       'update.text': '当前 {current} → 最新 {latest}。',
-      'update.hint': '将打开插件管理页；如果那里没有更新操作，可从 GitHub 仓库重新安装。',
+      'update.hint': '将自动安装最新 GitHub 版本，完成后自动刷新页面。',
       'update.repo': '打开 GitHub 仓库',
       'update.action': '更新',
       'update.skip': '跳过此版本',
       'update.never': '不再提示更新',
       'update.close': '关闭',
+      'update.installedTitle': '更新完成',
+      'update.updating': '正在更新…',
+      'update.error': '更新失败：{message}',
+      'update.applied': '更新完成，正在重新加载页面…',
+      'update.restart': '更新完成，请重启 DSH 以完成。',
       expand: '展开 {name}',
       collapse: '收起 {name}',
       ungrouped: '未归组',
@@ -362,6 +373,8 @@ window.__ModuleLoader__.load({
       '.wsb-update-secondary:hover{background:var(--dsw-alias-bg-layer-2)}',
       '.wsb-update-tertiary{border:none;background:transparent;color:var(--dsw-alias-label-secondary)}',
       '.wsb-update-tertiary:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}',
+      '.wsb-update-error{margin:0 0 10px;padding:6px 8px;border:1px solid var(--dsw-alias-border-l2);border-radius:7px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);font-size:11px;line-height:1.45;word-break:break-word}',
+      '.wsb-update-primary[disabled],.wsb-update-secondary[disabled],.wsb-update-tertiary[disabled],.wsb-update-close[disabled]{opacity:.55;cursor:default}',
       '.wsb-none{padding:2px 8px 6px 25px;font-size:10.5px;color:var(--dsw-alias-label-secondary)}',
       '.wsb-empty{display:flex;flex-direction:column;align-items:center;gap:4px;padding:26px 12px;text-align:center;color:var(--dsw-alias-label-secondary)}',
       '.wsb-empty-title{font-size:12.5px;font-weight:600;color:var(--dsw-alias-label-primary)}',
@@ -1603,13 +1616,68 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function UpdateDialog({ notice, tr, onUpdate, onSkip, onNever, onClose }) {
+    function UpdateDialog({ notice, tr, updating, error, completed, onUpdate, onSkip, onNever, onClose }) {
+      const busy = updating === true
+      const finished = completed !== null && completed !== undefined
+      const canDismiss = !busy && completed !== 'applied'
+      const title = finished ? tr('update.installedTitle') : tr('update.title')
+      const text = completed === 'restart'
+        ? tr('update.restart')
+        : completed === 'applied'
+          ? tr('update.applied')
+          : tr('update.text', { current: notice.current, latest: notice.latest })
+      const actions = completed === 'restart'
+        ? [
+          h(
+            'button',
+            { key: 'close', type: 'button', className: 'wsb-update-primary', autoFocus: true, onClick: onClose },
+            tr('update.close'),
+          ),
+        ]
+        : completed === 'applied'
+          ? []
+          : [
+            h(
+              'button',
+              {
+                key: 'update',
+                type: 'button',
+                className: 'wsb-update-primary',
+                autoFocus: true,
+                disabled: busy,
+                onClick: onUpdate,
+              },
+              busy ? tr('update.updating') : tr('update.action'),
+            ),
+            h(
+              'button',
+              {
+                key: 'skip',
+                type: 'button',
+                className: 'wsb-update-secondary',
+                disabled: busy,
+                onClick: onSkip,
+              },
+              tr('update.skip'),
+            ),
+            h(
+              'button',
+              {
+                key: 'never',
+                type: 'button',
+                className: 'wsb-update-tertiary',
+                disabled: busy,
+                onClick: onNever,
+              },
+              tr('update.never'),
+            ),
+          ]
       return h(
         'div',
         {
           className: 'wsb-update-backdrop',
           onMouseDown: (event) => {
-            if (event.target === event.currentTarget) onClose()
+            if (event.target === event.currentTarget && canDismiss) onClose()
           },
         },
         h(
@@ -1627,33 +1695,19 @@ window.__ModuleLoader__.load({
               className: 'wsb-update-close',
               title: tr('update.close'),
               'aria-label': tr('update.close'),
+              disabled: !canDismiss,
               onClick: onClose,
             },
             h(CloseIcon, { size: 12 }),
           ),
-          h('h2', { className: 'wsb-update-title', id: 'wsb-update-title' }, tr('update.title')),
-          h('p', { className: 'wsb-update-text' }, tr('update.text', { current: notice.current, latest: notice.latest })),
-          h('p', { className: 'wsb-update-hint' }, tr('update.hint')),
-          h('a', { className: 'wsb-update-link', href: REPO_URL, target: '_blank', rel: 'noopener noreferrer' }, tr('update.repo')),
-          h(
-            'div',
-            { className: 'wsb-update-actions' },
-            h(
-              'button',
-              { type: 'button', className: 'wsb-update-primary', autoFocus: true, onClick: onUpdate },
-              tr('update.action'),
-            ),
-            h(
-              'button',
-              { type: 'button', className: 'wsb-update-secondary', onClick: onSkip },
-              tr('update.skip'),
-            ),
-            h(
-              'button',
-              { type: 'button', className: 'wsb-update-tertiary', onClick: onNever },
-              tr('update.never'),
-            ),
-          ),
+          h('h2', { className: 'wsb-update-title', id: 'wsb-update-title' }, title),
+          h('p', { className: 'wsb-update-text' }, text),
+          completed === null ? h('p', { className: 'wsb-update-hint' }, tr('update.hint')) : null,
+          error === null ? null : h('div', { className: 'wsb-update-error', role: 'alert' }, tr('update.error', { message: error })),
+          completed === null
+            ? h('a', { className: 'wsb-update-link', href: REPO_URL, target: '_blank', rel: 'noopener noreferrer' }, tr('update.repo'))
+            : null,
+          h('div', { className: 'wsb-update-actions' }, actions),
         ),
       )
     }
@@ -1661,7 +1715,11 @@ window.__ModuleLoader__.load({
     function UpdateNotice(props) {
       const tr = typeof props.t === 'function' ? props.t : (key) => key
       const openPlugins = typeof props.openPlugins === 'function' ? props.openPlugins : () => {}
+      const installUpdate = typeof props.installUpdate === 'function' ? props.installUpdate : null
       const [notice, setNotice] = React.useState(null)
+      const [updating, setUpdating] = React.useState(false)
+      const [updateError, setUpdateError] = React.useState(null)
+      const [completed, setCompleted] = React.useState(null)
 
       React.useEffect(() => {
         const prefs = readUpdatePrefs()
@@ -1682,35 +1740,79 @@ window.__ModuleLoader__.load({
       React.useEffect(() => {
         if (notice === null) return undefined
         const onKeyDown = (event) => {
-          if (event.key === 'Escape') setNotice(null)
+          if (event.key !== 'Escape') return
+          if (updating || completed === 'applied') return
+          setNotice(null)
         }
         document.addEventListener('keydown', onKeyDown)
         return () => document.removeEventListener('keydown', onKeyDown)
-      }, [notice])
+      }, [notice, updating, completed])
 
       if (notice === null) return null
 
-      const close = () => setNotice(null)
+      const close = () => {
+        if (updating || completed === 'applied') return
+        setNotice(null)
+      }
       const skip = () => {
+        if (updating || completed !== null) return
         const prefs = readUpdatePrefs()
         writeUpdatePrefs(Object.assign({}, prefs, { skippedVersion: notice.latest }))
         setNotice(null)
       }
       const never = () => {
+        if (updating || completed !== null) return
         const prefs = readUpdatePrefs()
         writeUpdatePrefs(Object.assign({}, prefs, { never: true, skippedVersion: notice.latest }))
         setNotice(null)
       }
-      const update = () => {
-        setNotice(null)
-        try {
+      const update = async () => {
+        if (updating || completed !== null) return
+        if (installUpdate === null) {
+          setUpdateError('Plugin manager is unavailable')
           openPlugins()
-        } catch {
-          if (typeof window !== 'undefined') window.open(REPO_URL, '_blank', 'noopener,noreferrer')
+          return
+        }
+        setUpdating(true)
+        setUpdateError(null)
+        try {
+          const result = await installUpdate()
+          if (result === null || result === undefined || typeof result !== 'object') {
+            throw new Error('Update did not return a result')
+          }
+          if (result.application === 'restart-required') {
+            setCompleted('restart')
+            setUpdating(false)
+            return
+          }
+          if (result.application !== 'applied') {
+            const reason = result.error !== null && result.error !== undefined && typeof result.error.message === 'string'
+              ? result.error.message
+              : 'Update did not apply'
+            throw new Error(reason)
+          }
+          setCompleted('applied')
+          setUpdating(false)
+          setTimeout(() => {
+            if (typeof window !== 'undefined') window.location.reload()
+          }, 900)
+        } catch (error) {
+          setUpdateError(messageOf(error))
+          setUpdating(false)
         }
       }
 
-      return h(UpdateDialog, { notice, tr, onUpdate: update, onSkip: skip, onNever: never, onClose: close })
+      return h(UpdateDialog, {
+        notice,
+        tr,
+        updating,
+        error: updateError,
+        completed,
+        onUpdate: update,
+        onSkip: skip,
+        onNever: never,
+        onClose: close,
+      })
     }
 
     // ---------------------------------------------------------------------
@@ -2395,12 +2497,39 @@ window.__ModuleLoader__.load({
             }
             return false
           },
+          installUpdate: async () => {
+            const manager = ctx.remote !== undefined && ctx.remote !== null && ctx.remote.pluginManager !== undefined
+              ? ctx.remote.pluginManager
+              : ctx.get('remote.pluginManager')
+            if (manager === undefined || manager === null || typeof manager.installBundle !== 'function') {
+              throw new Error('Plugin manager is unavailable')
+            }
+            const makeRequestId = () => (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+              ? crypto.randomUUID()
+              : String(Date.now()) + '-' + Math.random().toString(16).slice(2))
+            const attempt = () => manager.installBundle(UPDATE_SPEC, { enabled: true, requestId: makeRequestId() })
+            let result = await attempt()
+            const failure = result !== null && result !== undefined && result.ok === false && result.error !== null && result.error !== undefined && typeof result.error.message === 'string'
+              ? result.error.message
+              : ''
+            if (result !== null && result !== undefined && result.ok === false && /EPERM|permission|not permitted|operation-error/i.test(failure)) {
+              await new Promise((resolve) => setTimeout(resolve, 1200))
+              result = await attempt()
+            }
+            if (result === null || result === undefined || result.ok !== true) {
+              const message = result !== null && result !== undefined && result.error !== null && result.error !== undefined && typeof result.error.message === 'string'
+                ? result.error.message
+                : 'Plugin install failed'
+              throw new Error(message)
+            }
+            return result.value
+          },
         }),
       }, UpdateNotice))
     }
 
     return {
-      inject: ['slots', 'locale', 'uiWorkspace', 'workspaces', 'sessions'],
+      inject: ['slots', 'locale', 'remote', 'uiWorkspace', 'workspaces', 'sessions'],
       apply,
     }
   },
