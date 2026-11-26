@@ -20,7 +20,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
 
     const NS = 'workspaceStatusBoard'
-    const PLUGIN_VERSION = '1.7.0'
+    const PLUGIN_VERSION = '1.7.1'
     const REPO_URL = 'https://github.com/CYF736222347/dsh-workspace-status-board'
     const REMOTE_PACKAGE_URL = 'https://cdn.jsdelivr.net/gh/CYF736222347/dsh-workspace-status-board@main/package.json'
     const REMOTE_PACKAGE_API = 'https://api.github.com/repos/CYF736222347/dsh-workspace-status-board/contents/package.json?ref=main'
@@ -1208,7 +1208,7 @@ window.__ModuleLoader__.load({
           const doneSessions = row.sessions.filter((session) => session.state === 'done')
           const visibleDone = doneExpanded ? doneSessions : doneSessions.slice(0, DONE_PREVIEW_LIMIT)
           const hiddenDone = doneSessions.length - visibleDone.length
-          const children = activeSessions.concat(visibleDone).map((session) => h(SessionEntry, {
+          const sessionNode = (session) => h(SessionEntry, {
             key: session.id,
             session,
             now,
@@ -1226,19 +1226,37 @@ window.__ModuleLoader__.load({
             onDragOver: dragOverSession(session),
             onDrop: dropSession(session),
             tr,
-          }))
-          if (doneSessions.length > DONE_PREVIEW_LIMIT) {
+          })
+          const children = activeSessions.map(sessionNode)
+          if (doneSessions.length > DONE_PREVIEW_LIMIT && doneExpanded) {
+            children.push(h(
+              'button',
+              {
+                key: 'done-collapse-top',
+                type: 'button',
+                className: 'wsb-more wsb-more-top',
+                'aria-expanded': true,
+                onClick: () => onToggleDone(row.key),
+              },
+              h('span', { className: 'wsb-chevron', 'aria-hidden': 'true' }, h(ChevronIcon, { open: true })),
+              h('span', null, tr('done.less')),
+            ))
+          }
+          for (const session of visibleDone) {
+            children.push(sessionNode(session))
+          }
+          if (doneSessions.length > DONE_PREVIEW_LIMIT && !doneExpanded) {
             children.push(h(
               'button',
               {
                 key: 'done-more',
                 type: 'button',
                 className: 'wsb-more',
-                'aria-expanded': doneExpanded === true,
+                'aria-expanded': false,
                 onClick: () => onToggleDone(row.key),
               },
-              h('span', { className: 'wsb-chevron', 'aria-hidden': 'true' }, h(ChevronIcon, { open: doneExpanded === true })),
-              h('span', null, doneExpanded ? tr('done.less') : tr('done.more', { n: hiddenDone })),
+              h('span', { className: 'wsb-chevron', 'aria-hidden': 'true' }, h(ChevronIcon, { open: false })),
+              h('span', null, tr('done.more', { n: hiddenDone })),
             ))
           }
           body = h('div', { className: 'wsb-sessions', role: 'group', 'aria-label': title }, children)
@@ -1753,6 +1771,15 @@ window.__ModuleLoader__.load({
         return () => clearTimeout(handle)
       }, [notice])
 
+      React.useEffect(() => {
+        try {
+          localStorage.removeItem('dsh.workspace-status-board.expanded-done.v1')
+          localStorage.removeItem('dsh.workspace-status-board.order.v1')
+        } catch {
+          /* localStorage can be unavailable; the in-memory defaults still apply */
+        }
+      }, [])
+
       const archivedWorkspaceSet = React.useMemo(() => {
         const set = new Set()
         for (const [id, flag] of Object.entries(archivedWorkspaces)) if (flag === true) set.add(id)
@@ -1793,6 +1820,7 @@ window.__ModuleLoader__.load({
       const currentId = panelActive ? null : currentSessionId(sessionsState)
 
       const toggle = (key) => {
+        const collapsing = collapsed[key] !== true
         setCollapsed((previous) => {
           const next = Object.assign({}, previous)
           if (next[key] === true) delete next[key]
@@ -1800,6 +1828,14 @@ window.__ModuleLoader__.load({
           writeStoredMap(COLLAPSE_KEY, next)
           return next
         })
+        if (collapsing) {
+          setDoneExpanded((previous) => {
+            if (previous[key] !== true) return previous
+            const next = Object.assign({}, previous)
+            delete next[key]
+            return next
+          })
+        }
       }
 
       const toggleDone = (key) => {
