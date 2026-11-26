@@ -1819,6 +1819,8 @@ window.__ModuleLoader__.load({
       }, [workspacesState, archivedWorkspaceSet, tr])
       const currentId = panelActive ? null : currentSessionId(sessionsState)
 
+      const doneStateKey = (key) => PLUGIN_VERSION + ':' + key
+
       const toggle = (key) => {
         const collapsing = collapsed[key] !== true
         setCollapsed((previous) => {
@@ -1830,9 +1832,10 @@ window.__ModuleLoader__.load({
         })
         if (collapsing) {
           setDoneExpanded((previous) => {
-            if (previous[key] !== true) return previous
+            const stateKey = doneStateKey(key)
+            if (previous[stateKey] !== true) return previous
             const next = Object.assign({}, previous)
-            delete next[key]
+            delete next[stateKey]
             return next
           })
         }
@@ -1840,9 +1843,10 @@ window.__ModuleLoader__.load({
 
       const toggleDone = (key) => {
         setDoneExpanded((previous) => {
+          const stateKey = doneStateKey(key)
           const next = Object.assign({}, previous)
-          if (next[key] === true) delete next[key]
-          else next[key] = true
+          if (next[stateKey] === true) delete next[stateKey]
+          else next[stateKey] = true
           return next
         })
       }
@@ -2115,7 +2119,7 @@ window.__ModuleLoader__.load({
               collapsed: collapsed[row.key] === true,
               queryActive,
               dragEnabled,
-              doneExpanded: doneExpanded[row.key] === true,
+              doneExpanded: doneExpanded[doneStateKey(row.key)] === true,
               workspaceDragging: workspaceDrag !== null && workspaceDrag.key === row.key,
               workspaceDropHalf: workspaceDrop !== null && workspaceDrop.key === row.key ? workspaceDrop.half : null,
               workspaceCanDrop: dragEnabled && workspaceDrag !== null && workspaceDrag.key !== row.key && workspaceDrag.state === row.state,
