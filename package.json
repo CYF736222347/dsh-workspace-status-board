@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-workspace-status-board",
-  "version": "1.8.4",
+  "version": "1.8.5",
   "description": "Status-first workspace board for the DSH sidebar: sorts workspaces and their tasks by needs-input, running, then done, with search, same-status drag ordering, task archive/restore, and three distinct status markers.",
   "type": "module",
   "license": "MIT",
