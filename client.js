@@ -20,7 +20,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
 
     const NS = 'workspaceStatusBoard'
-    const PLUGIN_VERSION = '1.8.0'
+    const PLUGIN_VERSION = '1.8.1'
     const REPO_URL = 'https://github.com/CYF736222347/dsh-workspace-status-board'
     const REMOTE_PACKAGE_URL = 'https://cdn.jsdelivr.net/gh/CYF736222347/dsh-workspace-status-board@main/package.json'
     const REMOTE_PACKAGE_API = 'https://api.github.com/repos/CYF736222347/dsh-workspace-status-board/contents/package.json?ref=main'
@@ -2498,8 +2498,9 @@ window.__ModuleLoader__.load({
             return false
           },
           installUpdate: async () => {
-            const manager = ctx.remote !== undefined && ctx.remote !== null && ctx.remote.pluginManager !== undefined
-              ? ctx.remote.pluginManager
+            const remote = ctx.get('remote')
+            const manager = remote !== undefined && remote !== null && remote.pluginManager !== undefined
+              ? remote.pluginManager
               : ctx.get('remote.pluginManager')
             if (manager === undefined || manager === null || typeof manager.installBundle !== 'function') {
               throw new Error('Plugin manager is unavailable')
@@ -2529,7 +2530,7 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots', 'locale', 'remote', 'uiWorkspace', 'workspaces', 'sessions'],
+      inject: ['slots', 'locale', 'uiWorkspace', 'workspaces', 'sessions'],
       apply,
     }
   },
